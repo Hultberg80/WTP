@@ -63,6 +63,7 @@ textarea {
     border: 2px solid;
 }
 
+
 button {
     padding: 10px 15px;
     border-radius: 6px;
@@ -75,9 +76,15 @@ button {
     font-size: 16px;
 }
 
+
 button:hover {
     background-color: rgb(38, 6, 38);
 }
+
+
+
+
+
 
 
 
@@ -104,6 +111,7 @@ button:hover {
   .faq-buttons button {
     display: flex;
     justify-content: space-around;
+    color: black;
     font-size: 15px;
     padding: 15px 35px; 
     border: 2px solid #333;
@@ -127,12 +135,8 @@ button:hover {
 
   
   .faq-extra-section {
-position: relative;
-    top: 100px;
-    left: -6%;
     background-color: #cacaca;
     padding: 40px;
-    width: 107%;
     box-shadow: 3px 3px 10px #a9a8a8;
   }
   
