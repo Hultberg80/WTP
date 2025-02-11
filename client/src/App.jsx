@@ -25,7 +25,7 @@ function App() {
           <Route path="admin">
             <Route path="login" element={<AdminLogin />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="create-user" element={<AdminCreateUser />} />
+            <Route path="create-user" element={<AdminCreateUser />} />  
           </Route>
 
           {/* Staff routes */}
