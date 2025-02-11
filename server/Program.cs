@@ -69,7 +69,7 @@ app.MapPost("/api/formsubmissions", async (FormSubmission submission, AppDbConte
     await db.SaveChangesAsync();
 
     // Skapa chat-länk
-    var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
+    var baseUrl = config["BaseUrl"] ?? "http://localhost:3000/chat";
     var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
 
     try
