@@ -35,7 +35,7 @@ function Chat() {
                     </button>
                 </div>
             ) : (
-                <p>Laddar chat...</p>
+                <p id='meddelande'>Laddar chat...</p> // Här ska vårt meddelande stå från Form.jsx
             )}
         </div>
     );
