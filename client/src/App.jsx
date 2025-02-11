@@ -1,4 +1,3 @@
-// App.jsx
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 import Form from "./Form";
@@ -27,17 +26,17 @@ function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="create-user" element={<AdminCreateUser />} />  
           </Route>
-
+          
           {/* Staff routes */}
           <Route path="staff">
             <Route path="login" element={<StaffLogin />} />
             <Route path="dashboard" element={<StaffDashboard />} />
           </Route>
-
+          
           {/* Other routes */}
-          <Route path="chat" element={<Chat />} />
+          <Route path="chat/:token" element={<Chat />} />
           <Route path="faq" element={<Faq />} />
-          <Route path="form" element={<Form />} />
+          <Route path="form" element={<FormPage />} />
         </Route>
       </Routes>
     </Router>
