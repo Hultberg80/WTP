@@ -89,13 +89,15 @@ button:hover {
 
 
 .faq-container {
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgb(18, 18, 84);
+    padding: 10px 20px;
+    transition: transform 0.2s;
+    width: 500px;
     text-align: center;
-    padding: 20px;
-    background-color: #f0f0f0;
-    padding: 100px;
-    margin-top: 10px;
-    border-radius: 10px;
-    box-shadow: 5px 5px 20px #b8b7b7;
+    margin: auto;
+    margin-top: 20px;
   }
   
 
@@ -109,15 +111,15 @@ button:hover {
 }
 
   .faq-buttons button {
-    display: flex;
-    justify-content: space-around;
-    color: black;
-    font-size: 15px;
-    padding: 15px 35px; 
-    border: 2px solid #333;
-    border-radius: 25px;
-    background-color: white;
-    box-shadow: 5px 5px 20px #a8a8a8;
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 15px;
+    border: none;
+    color: aliceblue;
+    cursor: pointer;
+    background-color: rgb(62, 40, 83);
+    width: 40%;
+    font-size: 16px;
 
 
     cursor: pointer;
@@ -128,15 +130,13 @@ button:hover {
 
 
   .faq-buttons button:hover {
-    background-color: #ddd;
+    background-color: rgb(38, 6, 38);
   }
   
 
+.faqh1{
+    font-size: x-large;
+    text-align: center;
+    color: rgb(89, 36, 89)
+}
 
-  
-  .faq-extra-section {
-    background-color: #cacaca;
-    padding: 40px;
-    box-shadow: 3px 3px 10px #a9a8a8;
-  }
-  

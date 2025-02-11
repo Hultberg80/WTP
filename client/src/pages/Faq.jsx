@@ -2,9 +2,8 @@
 function Faq() {
     return (
       <div className="faq-container">
-        <h1 className="text-2xl font-bold mb-4">Frequently Asked Questions</h1>
 
-      <h1>Har du läst vår FAQ?</h1>
+      <h1 className="faqh1">Har du läst vår FAQ?</h1>
        <div className="faq-buttons">
 
         <button>JA</button>
