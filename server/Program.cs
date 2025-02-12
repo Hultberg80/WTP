@@ -51,9 +51,11 @@ app.MapGet("/api/formsubmissions", async (AppDbContext db) =>
     return Results.Ok(submissions);
 });
 
-app.MapGet("/api/formsubmissions/{id}", async (int id, AppDbContext db) =>
+
+// Ändra denna endpoint
+app.MapGet("/api/formsubmissions/{token}", async (string token, AppDbContext db) =>
 {
-    var submission = await db.FormSubmissions.FindAsync(id);
+    var submission = await db.FormSubmissions.FirstOrDefaultAsync(s => s.ChatToken == token);
     return submission is null ? Results.NotFound() : Results.Ok(submission);
 });
 
