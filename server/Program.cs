@@ -5,7 +5,7 @@ using server.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Existing service configuration
+// Service configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAuthentication();
@@ -44,37 +44,33 @@ app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Minimal API Endpoints
-app.MapGet("/api/formsubmissions", async (AppDbContext db) =>
+// Auto Service Endpoints
+app.MapGet("/api/auto-service", async (AppDbContext db) =>
 {
-    var submissions = await db.FormSubmissions.ToListAsync();
+    var submissions = await db.AutoServiceSubmissions.ToListAsync();
     return Results.Ok(submissions);
 });
 
-app.MapGet("/api/formsubmissions/{id}", async (int id, AppDbContext db) =>
+app.MapGet("/api/auto-service/{id}", async (int id, AppDbContext db) =>
 {
-    var submission = await db.FormSubmissions.FindAsync(id);
+    var submission = await db.AutoServiceSubmissions.FindAsync(id);
     return submission is null ? Results.NotFound() : Results.Ok(submission);
 });
 
-app.MapPost("/api/formsubmissions", async (FormSubmission submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
+app.MapPost("/api/auto-service", async (AutoServiceSubmission submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
 {
-    // Sätt värden för nya submissions
     submission.ChatToken = Guid.NewGuid().ToString();
     submission.SubmittedAt = DateTime.UtcNow;
     submission.IsChatActive = true;
 
-    // Spara till databasen
-    db.FormSubmissions.Add(submission);
+    db.AutoServiceSubmissions.Add(submission);
     await db.SaveChangesAsync();
 
-    // Skapa chat-länk
     var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
     var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
 
     try
     {
-        // Skicka e-post
         await emailService.SendChatInvitation(
             submission.Email,
             chatLink,
@@ -83,7 +79,6 @@ app.MapPost("/api/formsubmissions", async (FormSubmission submission, AppDbConte
     }
     catch (Exception ex)
     {
-        // Logga felet men returnera ändå success eftersom data är sparad
         return Results.Ok(new
         {
             message = "Form submitted successfully but email delivery failed",
@@ -98,32 +93,121 @@ app.MapPost("/api/formsubmissions", async (FormSubmission submission, AppDbConte
     });
 });
 
-app.MapPut("/api/formsubmissions/{id}", async (int id, FormSubmission submission, AppDbContext db) =>
+// Telecom Endpoints
+app.MapGet("/api/telecom", async (AppDbContext db) =>
 {
-    var existingSubmission = await db.FormSubmissions.FindAsync(id);
-    if (existingSubmission is null) return Results.NotFound();
-
-    // Uppdatera fält
-    existingSubmission.FirstName = submission.FirstName;
-    existingSubmission.LastName = submission.LastName;
-    existingSubmission.Email = submission.Email;
-    existingSubmission.Gender = submission.Gender;
-    existingSubmission.Subject = submission.Subject;
-    existingSubmission.About = submission.About;
-    existingSubmission.IsChatActive = submission.IsChatActive;
-
-    await db.SaveChangesAsync();
-    return Results.Ok(existingSubmission);
+    var submissions = await db.TelecomSubmissions.ToListAsync();
+    return Results.Ok(submissions);
 });
 
-app.MapDelete("/api/formsubmissions/{id}", async (int id, AppDbContext db) =>
+app.MapGet("/api/telecom/{id}", async (int id, AppDbContext db) =>
 {
-    var submission = await db.FormSubmissions.FindAsync(id);
-    if (submission is null) return Results.NotFound();
+    var submission = await db.TelecomSubmissions.FindAsync(id);
+    return submission is null ? Results.NotFound() : Results.Ok(submission);
+});
 
-    db.FormSubmissions.Remove(submission);
+app.MapPost("/api/telecom", async (TelecomSubmission submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
+{
+    submission.ChatToken = Guid.NewGuid().ToString();
+    submission.SubmittedAt = DateTime.UtcNow;
+    submission.IsChatActive = true;
+
+    db.TelecomSubmissions.Add(submission);
     await db.SaveChangesAsync();
-    return Results.Ok();
+
+    var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
+    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
+
+    try
+    {
+        await emailService.SendChatInvitation(
+            submission.Email,
+            chatLink,
+            submission.FirstName
+        );
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new
+        {
+            message = "Form submitted successfully but email delivery failed",
+            submission
+        });
+    }
+
+    return Results.Ok(new
+    {
+        message = "Form submitted successfully",
+        submission
+    });
+});
+
+// Insurance Endpoints
+app.MapGet("/api/insurance", async (AppDbContext db) =>
+{
+    var submissions = await db.InsuranceSubmissions.ToListAsync();
+    return Results.Ok(submissions);
+});
+
+app.MapGet("/api/insurance/{id}", async (int id, AppDbContext db) =>
+{
+    var submission = await db.InsuranceSubmissions.FindAsync(id);
+    return submission is null ? Results.NotFound() : Results.Ok(submission);
+});
+
+app.MapPost("/api/insurance", async (InsuranceSubmission submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
+{
+    submission.ChatToken = Guid.NewGuid().ToString();
+    submission.SubmittedAt = DateTime.UtcNow;
+    submission.IsChatActive = true;
+
+    db.InsuranceSubmissions.Add(submission);
+    await db.SaveChangesAsync();
+
+    var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
+    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
+
+    try
+    {
+        await emailService.SendChatInvitation(
+            submission.Email,
+            chatLink,
+            submission.FirstName
+        );
+    }
+    catch (Exception ex)
+    {
+        return Results.Ok(new
+        {
+            message = "Form submitted successfully but email delivery failed",
+            submission
+        });
+    }
+
+    return Results.Ok(new
+    {
+        message = "Form submitted successfully",
+        submission
+    });
+});
+
+// Common endpoint för att kolla chat token
+app.MapGet("/api/chat/{chatToken}", async (string chatToken, AppDbContext db) =>
+{
+    // Kolla i alla tabeller efter chatToken
+    var autoService = await db.AutoServiceSubmissions
+        .FirstOrDefaultAsync(s => s.ChatToken == chatToken);
+    if (autoService != null) return Results.Ok(autoService);
+
+    var telecom = await db.TelecomSubmissions
+        .FirstOrDefaultAsync(s => s.ChatToken == chatToken);
+    if (telecom != null) return Results.Ok(telecom);
+
+    var insurance = await db.InsuranceSubmissions
+        .FirstOrDefaultAsync(s => s.ChatToken == chatToken);
+    if (insurance != null) return Results.Ok(insurance);
+
+    return Results.NotFound();
 });
 
 app.Run();
