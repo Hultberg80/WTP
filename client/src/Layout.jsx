@@ -76,6 +76,15 @@ function Layout() {
               >
                 Chat
               </Link>
+
+
+              <Link
+            to="/ChatLayout"
+            >
+              ChatLayout
+            </Link>
+
+
             </div>
           </div>
         </div>

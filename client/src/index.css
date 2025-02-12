@@ -301,3 +301,75 @@ h3{
     display: flex;
     justify-content: space-evenly;
 }
+
+
+
+
+
+
+
+
+
+.chat-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    width: 1200px;
+    height: 600px;
+    padding: 24px;
+    background-color: #f3f4f6;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgb(18, 18, 84);
+}
+
+#text-bar {
+    display: flex;
+    position: absolute;
+    bottom: 20px; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 40px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+
+.skicka-knapp{
+
+    display: flex;
+    position: absolute;
+    align-items: center;
+    bottom: 5px; 
+    left: 75%;
+    transform: translateX(-40%);
+    width: 55px;
+    height: 40px;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+
+}
+
+.emoji{
+    display: flex;
+    position: absolute;
+    font-size: 30px;
+
+    bottom: 15px; 
+    left: 70%;
+    padding: 5px 10px;
+}
+
+
+.emojipicker{
+    position: absolute;
+    top: 20%;
+    left: 70%;
+    width: 300px;
+    max-height: 300px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}

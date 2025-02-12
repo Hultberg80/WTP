@@ -9,6 +9,7 @@ import AdminCreateUser from './pages/AdminCreateUser';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import Chat from './pages/Chat';
+import ChatLayout from './pages/ChatLayout';
 import Faq from './pages/Faq';
 import StaffDashboard from './pages/StaffDashboard/Header';
 import StaffLogin from './pages/StaffLogin';
@@ -39,6 +40,7 @@ function App() {
 
           {/* Other routes */}
           <Route path="chat" element={<Chat />} />
+          <Route path="ChatLayout" element={<ChatLayout />} />
           <Route path="faq" element={<Faq />} />
           <Route path="form" element={<Form />} />
         </Route>
