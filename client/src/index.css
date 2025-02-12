@@ -1,4 +1,67 @@
 
+
+
+.faq-container {
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgb(18, 18, 84);
+    padding: 10px 20px;
+    transition: transform 0.2s;
+    width: 500px;
+    text-align: center;
+    margin: auto;
+    margin-top: 20px;
+  }
+  
+
+
+.faq-buttons{
+    display: flex;
+    justify-content: space-evenly;
+    margin-top: 20%;
+    margin-bottom: 5%;
+
+}
+
+  .faq-buttons button {
+    padding: 10px 15px;
+    border-radius: 6px;
+    margin: 15px;
+    border: none;
+    color: aliceblue;
+    cursor: pointer;
+    background-color: rgb(62, 40, 83);
+    width: 40%;
+    font-size: 16px;
+
+
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+
+
+
+  .faq-buttons button:hover {
+    background-color: rgb(38, 6, 38);
+  }
+  
+
+
+  
+  .faq-extra-section {
+
+  }
+  
+
+.faqh1{
+    font-size: x-large;
+    text-align: center;
+    color: rgb(89, 36, 89)
+}
+
+
+
 .body{
     background: rgb(212, 206, 206);
     text-align: center;
@@ -77,4 +140,48 @@ button {
 
 button:hover {
     background-color: rgb(38, 6, 38);
+}
+
+
+
+
+
+
+.login-container{
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgb(18, 18, 84);
+    padding: 10px 20px;
+    transition: transform 0.2s;
+    width: 500px;
+    text-align: center;
+    margin: auto;
+    margin-top: 20px;
+}
+
+
+
+
+.admin-login{
+    padding-bottom: 15px;
+}
+
+.login-bar{
+    background-color: white;
+    border-radius: 2px;
+    padding: 10px 20px;
+    transition: transform 0.2s;
+    width: 500px;
+    text-align: center;
+    margin: auto;
+    margin-top: 20px;
+}
+
+
+.login-knapp {
+    display: flex;
+    justify-content: center;
+
+margin-top: 15%;
+margin-bottom: 5%;
 }
