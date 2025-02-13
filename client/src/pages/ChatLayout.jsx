@@ -15,6 +15,8 @@ export default function ChatLayout() {
 
 
 
+
+
     // Hantera klick utanför emoji-pickern för att stänga den
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -49,6 +51,7 @@ export default function ChatLayout() {
 
     return (
         <>
+        
             <h1>hejsan123</h1>
 
             <div className="chat-container">
