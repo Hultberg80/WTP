@@ -14,7 +14,6 @@
   }
   
 
-
 .faq-buttons{
     display: flex;
     justify-content: space-evenly;
@@ -34,12 +33,10 @@
     width: 40%;
     font-size: 16px;
 
-
     cursor: pointer;
     transition: all 0.3s ease;
   }
   
-
 
 
   .faq-buttons button:hover {
@@ -47,13 +44,11 @@
   }
   
 
-
 .faqh1{
     font-size: x-large;
     text-align: center;
     color: rgb(89, 36, 89)
 }
-
 
 
 .body{
@@ -140,7 +135,6 @@ button:hover {
 
 
 
-
 .login-container{
     background-color: white;
     border-radius: 15px;
@@ -152,7 +146,6 @@ button:hover {
     margin: auto;
     margin-top: 20px;
 }
-
 
 
 
@@ -171,7 +164,6 @@ button:hover {
     margin-top: 20px;
 }
 
-
 .login-knapp {
     display: flex;
     justify-content: center;
@@ -179,7 +171,6 @@ button:hover {
 margin-top: 15%;
 margin-bottom: 5%;
 }
-
 
 
 
@@ -201,7 +192,6 @@ nav {
     
 }
 
-
 h3{
     display: flex;
     justify-content: center;
@@ -218,7 +208,6 @@ h3{
     width: 96vw; /* WHY????? */
     
 }
-
 
 
 .main-container {
@@ -310,7 +299,6 @@ h3{
 
 
 
-
 .chat-container {
     position: relative;
     display: flex;
@@ -324,7 +312,6 @@ h3{
     margin: 0 auto;
     box-shadow: 0 0 20px rgb(18, 18, 84);
 }
-
 
 
 
@@ -347,7 +334,6 @@ h3{
     border: 1px solid #ccc;
     border-radius: 4px;
 }
-
 
 .skicka-knapp{
 
@@ -375,7 +361,6 @@ h3{
     padding: 5px 10px;
 }
 
-
 .emojipicker{
     position: absolute;
     top: 20%;
@@ -386,32 +371,55 @@ h3{
 }
 
 
-/*
-#Chatt-svar {
 
-    display: flex;
-    position: relative;
-    left: -140%;
-    top: 20%;
-    margin-bottom: 40%;
-    font-size:18px;
-    text-align: center;
-    margin-top: 20px;
-    border: 1px solid black;
-}
-*/
+
+
 
 .messages-container {
     display: flex;
-    justify-content: space-between;
-    align-items: center;  /* Centrerar vertikalt om det behövs */
+    position: absolute;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    width: 100%;
+    padding: 10px; 
 }
 
 .loading-message {
-    position: absolute;
-    left: 20px;  /* Laddningsmeddelandet till vänster */
+    align-self: flex-start; 
+    background-color: #e1e1e1;
+    padding: 10px;
+    margin: 5px 0;
+    max-width: 70%; 
+    white-space: normal;
 }
 
 .message {
-    margin-left: auto; /* Detta gör att meddelandet går till höger */
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 20px;
+    max-width: 70%; 
+    word-wrap: break-word; 
+    white-space: normal;
+    display: inline-block;
+}
+
+
+.message.user {
+    background-color: #0078ff; 
+    color: white;
+    align-self: flex-end; 
+    margin-right: 50px;
+    border-top-right-radius: 0; /* Skapa bubblan */
+    border-bottom-left-radius: 20px; /* Skapa bubblan */
+}
+
+/* Meddelande från den andra personen (vänster sida) */
+.message.other {
+    background-color: #e1e1e1;
+    align-self: flex-start;  
+    border-top-left-radius: 0;
+    border-bottom-right-radius: 20px;
+    margin-left: 50px;
 }

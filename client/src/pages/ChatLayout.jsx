@@ -2,26 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import EmojiPicker from "emoji-picker-react";
 import Chat from "./Chat";
 
-
-
-
-
 export default function ChatLayout() {
-
-    
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState(""); 
-
     const [messages, setMessages] = useState([]);
-    
     const emojiPickerRef = useRef(null);
     const [loading, setLoading] = useState(true);
-
-
-
-
-
-
 
     // Hantera klick utanför emoji-pickern för att stänga den
     useEffect(() => {
@@ -30,64 +16,50 @@ export default function ChatLayout() {
                 setOpen(false); // Stäng emoji-pickern när du klickar utanför
             }
         };
-    
+
         document.addEventListener("mousedown", handleClickOutside);
-    
+
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
     }, []);
 
-
-
-    // lägger till emoji-val till message-baren och stänger emojipicker efter
+    // Lägg till emoji-val till message-baren och stänger emoji-pickern efter
     const handleEmojiClick = (emoji) => {
         setMessage(prevMessage => prevMessage + emoji.emoji);
         setOpen(true);
     };
 
-
-
-    // skickar meddelandet 
-    // Skicka meddelandet och lägg till det i listan med meddelanden
+    // Skicka meddelandet 
     const handleSendMessage = () => {
         if (message.trim() !== "") {
-            // Lägg till meddelandet i listan av meddelanden
-            setMessages(prevMessages => [...prevMessages, message]);
-        }
-        setMessage(""); // Rensa inputfältet
-    };
+            // Lägg till meddelandet i listan av meddelanden och skicka som användarens meddelande
+            setMessages(prevMessages => [...prevMessages, { text: message, sender: 'user' }]);
 
+            // Simulera ett svar från den andra personen efter en kort fördröjning
+            setTimeout(() => {
+                setMessages(prevMessages => [...prevMessages, { text: "Svar från kunden", sender: 'other' }]);
+            }, 1000);
+        }
+        setMessage(""); 
+    };
 
     return (
         <>
             <h1>hejsan123</h1>
-    
-           
-    
             <div className="chat-container">
-               <h2 className='chat-namn'>namn här</h2>
+                <h2 className='chat-namn'>namn här</h2>
 
+               
+                <div className="messages-container">
+                    {/* Laddningsmeddelande */}
+                    {loading && <p className="loading-message">Laddar chat...</p>}
 
-
-
-   {/* Rendera alla meddelanden från messages */}
-   <div className="messages-container">
-    {/* Laddningsmeddelande */}
-    {loading && <p className="loading-message">Laddar chat...</p>}
-
-
-
-    {/* Lista av meddelanden */}
-    {messages.map((msg, index) => (
-        <div key={index} className="message">{msg}</div>
-        
-    ))}
-</div>
-
-
-
-
+                    {/* Lista av meddelanden */}
+                    {messages.map((msg, index) => (
+                        <div key={index} className={`message ${msg.sender}`}>{msg.text}</div>
+                    ))}
+                </div>
 
                 <input 
                     id="text-bar" 
@@ -96,24 +68,19 @@ export default function ChatLayout() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                 />
-    
+
                 <div className="emoji" onClick={() => setOpen(!open)}>
                     😃
                 </div>
-    
+
                 {open && (
                     <div ref={emojiPickerRef} className="emojipicker">
                         <EmojiPicker onEmojiClick={handleEmojiClick} />
                     </div>
                 )}
-    
+
                 <button className="skicka-knapp" onClick={handleSendMessage}>Send</button>
             </div>
-
-
-
-
-            
         </>
     );
-}    
+}
