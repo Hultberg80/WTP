@@ -19,9 +19,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Layout />}>
           {/* Grundformulär som startsida */}
-          <Route index element={<Form />} />
           
           {/* Dynamiskt CRM-formulär på egen route */}
+          <Route path="form" element={<Form />} />
+
           <Route path="dynamisk" element={<DynamiskForm />} />
           
           {/* Admin routes */}
@@ -41,7 +42,6 @@ function App() {
           <Route path="chat/:token" element={<Chat />} />
           <Route path="ChatLayout" element={<ChatLayout />} />
           <Route path="faq" element={<Faq />} />
-          <Route path="form" element={<FormPage />} />
         </Route>
       </Routes>
     </Router>

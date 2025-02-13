@@ -19,7 +19,7 @@ function Layout() {
                   to="/form" 
                   className="hover:text-blue-300 transition-colors"
                 >
-                  Grundformulär
+                  Grundform
                 </Link>
                 <Link 
                   to="/dynamisk" 

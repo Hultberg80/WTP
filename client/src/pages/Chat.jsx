@@ -11,6 +11,7 @@ function Chat() {
         let isMounted = true;
 
         const fetchChatData = async () => {
+            setLocalLoading(true);
             setLoading(true);
             setError(null);
             
@@ -34,6 +35,8 @@ function Chat() {
 
                 if (isMounted) {
                     setChatData(data);
+                    setLocalLoading(false);
+                    setLoading(false); 
                 }
             } catch (error) {
                 console.error('Fetch error:', error);
@@ -56,9 +59,10 @@ function Chat() {
         };
     }, [token]);
 
-    if (loading) {
-        return <p id="Chatt">Laddar chat...</p>;
-    }
+    if (loading) return null;
+        
+    
+    
 
     if (error) {
         return <p className="text-red-500">Error: {error}</p>;

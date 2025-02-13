@@ -48,12 +48,6 @@
   
 
 
-  
-  .faq-extra-section {
-
-  }
-  
-
 .faqh1{
     font-size: x-large;
     text-align: center;
@@ -331,6 +325,16 @@ h3{
     box-shadow: 0 0 20px rgb(18, 18, 84);
 }
 
+
+
+
+.chat-namn{
+    display: flex;
+    justify-content: center;
+    
+    text-align: center;
+}
+
 #text-bar {
     display: flex;
     position: absolute;
@@ -379,4 +383,35 @@ h3{
     width: 300px;
     max-height: 300px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+
+/*
+#Chatt-svar {
+
+    display: flex;
+    position: relative;
+    left: -140%;
+    top: 20%;
+    margin-bottom: 40%;
+    font-size:18px;
+    text-align: center;
+    margin-top: 20px;
+    border: 1px solid black;
+}
+*/
+
+.messages-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;  /* Centrerar vertikalt om det behövs */
+}
+
+.loading-message {
+    position: absolute;
+    left: 20px;  /* Laddningsmeddelandet till vänster */
+}
+
+.message {
+    margin-left: auto; /* Detta gör att meddelandet går till höger */
 }

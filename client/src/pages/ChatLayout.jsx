@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import EmojiPicker from "emoji-picker-react";
+import Chat from "./Chat";
+
 
 
 
@@ -9,7 +11,11 @@ export default function ChatLayout() {
     
     const [open, setOpen] = useState(false);
     const [message, setMessage] = useState(""); 
+
+    const [messages, setMessages] = useState([]);
+    
     const emojiPickerRef = useRef(null);
+    const [loading, setLoading] = useState(true);
 
 
 
@@ -43,19 +49,45 @@ export default function ChatLayout() {
 
 
     // skickar meddelandet 
+    // Skicka meddelandet och lägg till det i listan med meddelanden
     const handleSendMessage = () => {
-        console.log("Send message:", message); 
-        setMessage("");
+        if (message.trim() !== "") {
+            // Lägg till meddelandet i listan av meddelanden
+            setMessages(prevMessages => [...prevMessages, message]);
+        }
+        setMessage(""); // Rensa inputfältet
     };
 
 
     return (
         <>
-        
             <h1>hejsan123</h1>
-
+    
+           
+    
             <div className="chat-container">
-                <h2>namn här</h2>
+               <h2 className='chat-namn'>namn här</h2>
+
+
+
+
+   {/* Rendera alla meddelanden från messages */}
+   <div className="messages-container">
+    {/* Laddningsmeddelande */}
+    {loading && <p className="loading-message">Laddar chat...</p>}
+
+
+
+    {/* Lista av meddelanden */}
+    {messages.map((msg, index) => (
+        <div key={index} className="message">{msg}</div>
+        
+    ))}
+</div>
+
+
+
+
 
                 <input 
                     id="text-bar" 
@@ -64,17 +96,24 @@ export default function ChatLayout() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                 />
-
-               
+    
                 <div className="emoji" onClick={() => setOpen(!open)}>
                     😃
                 </div>
-
-                {/* Visae bara EmojiPicker om man klickar på emojin */}
-                {open && <div ref={emojiPickerRef} className="emojipicker"> <EmojiPicker onEmojiClick={handleEmojiClick} /></div>}
-
+    
+                {open && (
+                    <div ref={emojiPickerRef} className="emojipicker">
+                        <EmojiPicker onEmojiClick={handleEmojiClick} />
+                    </div>
+                )}
+    
                 <button className="skicka-knapp" onClick={handleSendMessage}>Send</button>
             </div>
+
+
+
+
+            
         </>
     );
-}
+}    
