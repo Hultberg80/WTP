@@ -38,7 +38,7 @@ export default function ChatLayout() {
 
             // Simulera ett svar från den andra personen efter en kort fördröjning
             setTimeout(() => {
-                setMessages(prevMessages => [...prevMessages, { text: "Svar från kunden", sender: 'other' }]);
+                setMessages(prevMessages => [...prevMessages, { text: "Svar från kunden", sender: 'kund' }]);
             }, 1000);
         }
         setMessage(""); 

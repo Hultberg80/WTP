@@ -416,7 +416,7 @@ h3{
 }
 
 /* Meddelande från den andra personen (vänster sida) */
-.message.other {
+.message.kund {
     background-color: #e1e1e1;
     align-self: flex-start;  
     border-top-left-radius: 0;
