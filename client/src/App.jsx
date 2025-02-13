@@ -1,16 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 import Form from "./Form";
-import DynamiskForm from './DynamiskForm';  // Uppdaterad import
 
-// Import your pages
+// Imports för sidor
 import AdminCreateUser from './pages/AdminCreateUser';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
-import Chat from './pages/Chat';
 import ChatLayout from './pages/ChatLayout';
 import Faq from './pages/Faq';
-import StaffDashboard from './pages/StaffDashboard/Header';
+import StaffDashboard from './pages/StaffDashboard/Header'; // Uppdatera denna sökväg
 import StaffLogin from './pages/StaffLogin';
 
 function App() {
@@ -18,18 +16,14 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Layout />}>
-          {/* Grundformulär som startsida */}
-          
-          {/* Dynamiskt CRM-formulär på egen route */}
-          <Route path="form" element={<Form />} />
-
-          <Route path="dynamisk" element={<DynamiskForm />} />
+          {/* Startsida */}
+          <Route index element={<Form />} />
           
           {/* Admin routes */}
           <Route path="admin">
             <Route path="login" element={<AdminLogin />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="create-user" element={<AdminCreateUser />} />  
+            <Route path="create-user" element={<AdminCreateUser />} />
           </Route>
           
           {/* Staff routes */}
@@ -38,10 +32,12 @@ function App() {
             <Route path="dashboard" element={<StaffDashboard />} />
           </Route>
           
-          {/* Other routes */}
-          <Route path="chat/:token" element={<Chat />} />
-          <Route path="ChatLayout" element={<ChatLayout />} />
+          {/* Chat route */}
+          <Route path="chat/:token" element={<ChatLayout />} />
+          
+          {/* Övriga routes */}
           <Route path="faq" element={<Faq />} />
+          <Route path="form" element={<Form />} />
         </Route>
       </Routes>
     </Router>
