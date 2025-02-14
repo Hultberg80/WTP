@@ -5,7 +5,7 @@ import DynamiskForm from './DynamiskForm';
 
 // Import admin pages
 import AdminCreateUser from './pages/AdminCreateUser';
-import AdminDashboard from './pages/AdminDashboard';
+import AdminDashboard from './pages/AdminDashboard/Header';
 import AdminLogin from './pages/AdminLogin';
 
 // Import staff pages
