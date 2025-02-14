@@ -217,9 +217,12 @@ main {
 }
 
 button:hover {
-    background-color: rgb(38, 6, 38);
+    background-color: rgb(219, 219, 219);
 }
 
+button {
+  height: 40px;
+}
 .login-container{
     background-color: white;
     border-radius: 15px;
@@ -517,6 +520,24 @@ footer {
     border-radius: 15px;
     margin-bottom: 10px;
     max-width: 70%;
+}
+
+textarea {
+  width: 100%; /* Gör så att den fyller sin container */
+  height: 150px; /* Justera höjden */
+  font-size: 16px; /* Justera textstorlek */
+  padding: 10px; /* Lägg till lite inre marginal */
+  border: 2px solid #000000; /* Ändra kantfärg */
+  border-radius: 5px; /* Rundade hörn */
+  background-color: #f9f9f9; /* Ljus bakgrund */
+  color: #333; /* Textfärg */
+  outline: none; /* Ta bort blå kant vid fokus */
+}
+
+textarea:focus {
+  border-color: #ff6600; /* Byt färg när den är markerad */
+  background-color: #fff; /* Gör den vit vid fokus */
+  box-shadow: 0 0 5px rgba(255, 102, 0, 0.5); /* Lägg till en svag skugga */
 }
 
 /* Ny styling för chat-info */
