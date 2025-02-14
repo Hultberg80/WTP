@@ -16,7 +16,7 @@ const navigate = useNavigate();
 
 
           <div className="faq-buttons">
-            <button onClick={() => navigate("/form")}>JA</button>
+            <button onClick={() => navigate("/dynamisk")}>JA</button>
             <button>Nej</button>
           </div>
 
