@@ -5,6 +5,7 @@ function DynamiskForm() {
   const [message, setMessage] = useState({ text: '', isError: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    companyType: '',
     firstName: '',
     email: '',
     serviceType: '',

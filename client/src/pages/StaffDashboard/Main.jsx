@@ -38,6 +38,7 @@ function Main() {
           id: submission.id,
           chatToken: submission.chatToken,
           issueType: `${submission.firstName}  - ${submission.issueType}`,
+          companyType: `${submission.companyType}`,
           email: submission.email,
           message: submission.message,
           submittedAt: submission.submittedAt || submission.createdAt,
