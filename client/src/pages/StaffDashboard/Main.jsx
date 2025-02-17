@@ -16,9 +16,19 @@ function Main() {
 
   // Hämta form submissions när komponent laddas
   useEffect(() => {
-    fetchFordonForms(), fetchForsakringsForms(), fetchTeleForms();
-  }, []);
-
+    const fetchAllForms = async () => {
+        try {
+            await Promise.all([
+                fetchFordonForms(),
+                fetchForsakringsForms(), 
+                fetchTeleForms()
+            ]);
+        } catch (error) {
+            console.error('Error fetching forms:', error);
+        }
+    };
+    fetchAllForms();
+}, []); 
 
   // Hämta submissions från API
   const fetchFordonForms = async () => {
