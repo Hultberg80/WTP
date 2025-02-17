@@ -1,9 +1,13 @@
 import { useState } from 'react';
 
+// Huvudkomponent för ett dynamiskt formulär som hanterar olika typer av ärenden
 function DynamiskForm() {
-  const [companyType, setCompanyType] = useState('');
-  const [message, setMessage] = useState({ text: '', isError: false });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // State-hantering för formuläret
+  const [companyType, setCompanyType] = useState('');  // Valt företagsområde
+  const [message, setMessage] = useState({ text: '', isError: false });  // Feedback till användaren
+  const [isSubmitting, setIsSubmitting] = useState(false);  // Kontrollerar formulärets submitstatus
+  
+  // Huvudstate för formulärdata
   const [formData, setFormData] = useState({
     firstName: '',
     email: '',
@@ -14,6 +18,7 @@ function DynamiskForm() {
     insuranceType: ''
   });
 
+  // Hanterar ändringar i inputfält
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -22,11 +27,13 @@ function DynamiskForm() {
     }));
   };
 
+  // Hanterar formulärinlämning
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage({ text: '', isError: false });
     setIsSubmitting(true);
     
+    // Grundläggande data som skickas oavsett formulärtyp
     let endpoint = '';
     let submitData = {
       firstName: formData.firstName,
@@ -37,6 +44,7 @@ function DynamiskForm() {
       submittedAt: new Date().toISOString()
     };
 
+    // Väljer endpoint och lägger till specifik data baserat på vald företagstyp
     switch (companyType) {
       case 'Tele/Bredband':
         endpoint = '/api/tele';
@@ -68,6 +76,7 @@ function DynamiskForm() {
         return;
     }
 
+    // Skickar data till servern
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -79,6 +88,7 @@ function DynamiskForm() {
 
       if (response.ok) {
         const result = await response.json();
+        // Återställer formuläret vid lyckat skick
         setMessage({ 
           text: 'Formuläret har skickats! Kolla din e-post för chattlänken.', 
           isError: false 
@@ -107,7 +117,10 @@ function DynamiskForm() {
     }
   };
 
+  // Komponent för telecom-specifika fält
   const renderTelecomFields = () => (
+
+    // JSX för telecom-fält
     <div className="field-group">
       <label htmlFor="serviceType">Typ av tjänst</label>
       <select
@@ -140,7 +153,9 @@ function DynamiskForm() {
     </div>
   );
   
+  // Komponent för fordonsservice-specifika fält
   const renderCarRepairFields = () => (
+    // JSX för fordonsservice-fält
     <div>
       <label htmlFor="registrationNumber">Registreringsnummer</label>
       <input
@@ -170,7 +185,9 @@ function DynamiskForm() {
     </div>
   );
 
+  // Komponent för försäkringsärenden-specifika fält
   const renderInsuranceFields = () => (
+    // JSX för försäkringsärende-fält
     <div>
       <label htmlFor="insuranceType">Typ av försäkring</label>
       <select
@@ -203,10 +220,13 @@ function DynamiskForm() {
     </div>
   );
 
+
+  // Huvudrender för formuläret
   return (
     <div className="container">
       <h1>Kontakta kundtjänst</h1>
       <form onSubmit={handleSubmit}>
+       {/* Grundläggande fält som visas för alla formulärtyper */}
         <label htmlFor="companyType">Välj Företag</label>
         <select
           name="companyType"
@@ -241,9 +261,11 @@ function DynamiskForm() {
           disabled={isSubmitting}
         />
 
+        {/* Villkorlig rendering av specifika fält baserat på vald företagstyp */}
         {companyType === 'Tele/Bredband' && renderTelecomFields()}
         {companyType === 'Fordonsservice' && renderCarRepairFields()}
         {companyType === 'Försäkringsärenden' && renderInsuranceFields()}
+
 
         <label htmlFor="message">Beskriv ditt ärende</label>
         <textarea
@@ -266,6 +288,8 @@ function DynamiskForm() {
           {isSubmitting ? 'Skickar...' : 'Skicka ärende'}
         </button>
         
+         {/* Meddelande/feedback till användaren */}
+
         {message.text && (
           <div 
             className={`message ${message.isError ? 'error' : 'success'}`}
