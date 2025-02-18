@@ -9,13 +9,13 @@ function Layout() {
         <div>
           <div>
             {/* Logo/Brand */}
-            <h1>Customer</h1>
+            <h1>WTP</h1>
 
             {/* Main Navigation */}
             <div>
               {/* Public Links */}
               <div>
-                <h2>Public Links</h2>
+                <h2>Customer</h2>
                 <Link 
                   to="/dynamisk" 
                   className="hover:text-blue-300 transition-colors"
@@ -52,7 +52,7 @@ function Layout() {
 
               {/* Staff Links */}
               <div>
-                <h2>Staff</h2>
+                <h2>Staff Pages</h2>
                 <Link 
                   to="/staff/login"
                 >
