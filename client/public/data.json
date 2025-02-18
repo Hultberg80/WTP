@@ -1,0 +1,32 @@
+[
+    {
+        "title": "Tele/Bredband",
+        "fields": [
+            { "label": "Namn", "type": "text", "name": "firstName", "placeholder": "Skriv ditt namn", "required": true },
+            { "label": "E-post", "type": "email", "name": "email", "placeholder": "Din e-post", "required": true },
+            { "label": "Typ av tjänst", "type": "select", "name": "serviceType", "options": ["Bredband", "Mobiltelefoni", "Fast telefoni", "TV-tjänster"], "required": true },
+            { "label": "Vad gäller ditt ärende?", "type": "select", "name": "issueType", "options": ["Tekniskt problem", "Fakturafrågor", "Ändring av tjänst", "Uppsägning", "Övrigt"], "required": true },
+            { "label": "Beskriv ditt ärende", "type": "textarea", "name": "message", "placeholder": "Beskriv ditt ärende i detalj...", "required": true }
+        ]
+    },
+    {
+        "title": "Fordonsservice",
+        "fields": [
+            { "label": "Namn", "type": "text", "name": "firstName", "placeholder": "Skriv ditt namn", "required": true },
+            { "label": "E-post", "type": "email", "name": "email", "placeholder": "Din e-post", "required": true },
+            { "label": "Registreringsnummer", "type": "text", "name": "registrationNumber", "placeholder": "ABC123", "required": true },
+            { "label": "Vad gäller ditt ärende?", "type": "select", "name": "issueType", "options": ["Problem efter reparation", "Garantiärende", "Reklamation", "Kostnadsförfrågan", "Reservdelsfrågor", "Övrigt"], "required": true },
+            { "label": "Beskriv ditt ärende", "type": "textarea", "name": "message", "placeholder": "Beskriv ditt ärende i detalj...", "required": true }
+        ]
+    },
+    {
+        "title": "Försäkringsärenden",
+        "fields": [
+            { "label": "Namn", "type": "text", "name": "firstName", "placeholder": "Skriv ditt namn", "required": true },
+            { "label": "E-post", "type": "email", "name": "email", "placeholder": "Din e-post", "required": true },
+            { "label": "Typ av försäkring", "type": "select", "name": "insuranceType", "options": ["Hemförsäkring", "Bilförsäkring", "Livförsäkring", "Olycksfallsförsäkring"], "required": true },
+            { "label": "Vad gäller ditt ärende?", "type": "select", "name": "issueType", "options": ["Pågående skadeärende", "Frågor om försäkringsskydd", "Fakturafrågor", "Ändring av försäkring", "Begäran om försäkringshandlingar"], "required": true },
+            { "label": "Beskriv ditt ärende", "type": "textarea", "name": "message", "placeholder": "Beskriv ditt ärende i detalj...", "required": true }
+        ]
+    }
+]
