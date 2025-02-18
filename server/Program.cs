@@ -44,47 +44,13 @@ app.UseCors("AllowReactApp");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/api/forms", async (AppDbContext db) =>
-{
-    var forms = new List<object>
-    {
-        new
-        {
-            title = "Fordon Form",
-            fields = new[]
-            {
-                new { type = "text", name = "firstName", label = "Förnamn", placeholder = "Ange ditt förnamn" },
-                new { type = "text", name = "lastName", label = "Efternamn", placeholder = "Ange ditt efternamn" },
-                new { type = "email", name = "email", label = "E-post", placeholder = "Ange din e-post" },
-                // Lägg till fler fält här
-            }
-        },
-        new
-        {
-            title = "Tele Form",
-            fields = new[]
-            {
-                new { type = "text", name = "firstName", label = "Förnamn", placeholder = "Ange ditt förnamn" },
-                new { type = "text", name = "lastName", label = "Efternamn", placeholder = "Ange ditt efternamn" },
-                new { type = "email", name = "email", label = "E-post", placeholder = "Ange din e-post" },
-                // Lägg till fler fält här
-            }
-        },
-        new
-        {
-            title = "Forsakrings Form",
-            fields = new[]
-            {
-                new { type = "text", name = "firstName", label = "Förnamn", placeholder = "Ange ditt förnamn" },
-                new { type = "text", name = "lastName", label = "Efternamn", placeholder = "Ange ditt efternamn" },
-                new { type = "email", name = "email", label = "E-post", placeholder = "Ange din e-post" },
-                // Lägg till fler fält här
-            }
-        }
-    };
 
-    return Results.Ok(forms);
-});
+    app.MapGet("/api/forms", async (AppDbContext db) =>
+    {
+        var forms = await db.Forms.ToListAsync();
+        return Results.Ok(forms);
+    });
+
 
 // User Endpoints
 app.MapPost("/api/users", async (UserForm user, AppDbContext db) =>
