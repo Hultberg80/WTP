@@ -2,7 +2,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 import DynamiskForm from './DynamiskForm';
-import SuperDynamisk from './SuperDynamisk';
+import SuperDynamiskForm from './SuperDynamisk';
 
 // Import admin pages
 import AdminCreateUser from './pages/AdminCreateUser';
@@ -33,7 +33,7 @@ function App() {
     })
      .catch((err) => console.error("Error fetching forms:", err));  
   }, []);
-  
+
   return (
     <Router>
       <Routes>
@@ -41,8 +41,18 @@ function App() {
           {/* Startsida */}
           <Route index element={<DynamiskForm />} />
           <Route path="dynamisk" element={<DynamiskForm />} />
-          <Route index element={<SuperDynamisk />} />
-          <Route path="superDynamisk" element={<SuperDynamisk />} />
+          <Route
+          path="superdynamisk"
+          element={
+            selectedForm ? (
+              <SuperDynamiskForm formData={selectedForm} />
+            ) : (
+              <p>Laddar formulär</p>
+            )
+          }
+          />
+
+          </Route>
           
           {/* Admin routes - grupperade tillsammans */}
           <Route path="admin">
@@ -60,7 +70,6 @@ function App() {
           {/* Feature routes */}
           <Route path="chat/:token" element={<Chat />} />
           <Route path="faq" element={<Faq />} />
-        </Route>
       </Routes>
     </Router>
   );

@@ -4,6 +4,10 @@ import { useState } from "react";
 const SuperDynamiskForm = ({ formData }) => {
     const [formValues, setFormValues] = useState({});
 
+    if(!formData) {
+        return <p>Laddar formulär...</p>;
+    } 
+
     const handleChange = (e) => {
         const { name, type, value, checked } = e.target;
 
