@@ -66,11 +66,14 @@ function Layout() {
               </div>
 
               {/* Chat */}
+              <div>
+                <h2>Chat</h2>
               <Link 
                 to="chat"
               >
                 Chat
-              </Link>
+                </Link>
+                </div>
             </div>
           </div>
         </div>
