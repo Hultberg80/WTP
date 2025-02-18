@@ -15,7 +15,7 @@ function Layout() {
             <div>
               {/* Public Links */}
               <div>
-             
+                <h2>Public Links</h2>
                 <Link 
                   to="/dynamisk" 
                   className="hover:text-blue-300 transition-colors"
