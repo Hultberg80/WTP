@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 import DynamiskForm from './DynamiskForm';
+import SuperDynamisk from './SuperDynamisk';
 
 // Import admin pages
 import AdminCreateUser from './pages/AdminCreateUser';
@@ -15,8 +16,24 @@ import StaffLogin from './pages/StaffLogin';
 // Import other pages
 import Chat from './pages/Chat';
 import Faq from './pages/Faq';
+import { useEffect, useState } from 'react';
 
 function App() {
+
+  const [forms, setForms] = useState([]);
+  const [selectedForm, setSelectedForm] = useState(null);
+
+  // Hämta formulär från API
+  useEffect(() => {
+    fetch("http://localhost:5000/api/forms")
+    .then((res) => res.json())
+    .then((data) => {
+      setForms(data);
+      if (data.length > 0) setSelectedForm(data[0]); //Första formuläret är standard
+    })
+     .catch((err) => console.error("Error fetching forms:", err));  
+  }, []);
+  
   return (
     <Router>
       <Routes>
@@ -24,6 +41,8 @@ function App() {
           {/* Startsida */}
           <Route index element={<DynamiskForm />} />
           <Route path="dynamisk" element={<DynamiskForm />} />
+          <Route index element={<SuperDynamisk />} />
+          <Route path="superDynamisk" element={<SuperDynamisk />} />
           
           {/* Admin routes - grupperade tillsammans */}
           <Route path="admin">

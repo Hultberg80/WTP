@@ -22,6 +22,12 @@ function Layout() {
                 >
                   Dynamiskt Formulär
                 </Link>
+
+                <Link to="/superdynamisk"
+                      className="hover:text-blue-300 transition-colors"
+                >
+                  SuperDynamiskt Formulär
+                </Link>
                 <Link 
                   to="/faq" 
                   className="hover:text-blue-300 transition-colors"
