@@ -108,7 +108,7 @@ function DynamiskForm() {
   };
 
   const renderTelecomFields = () => (
-    <div>
+    <div className="field-group">
       <label htmlFor="serviceType">Typ av tjänst</label>
       <select
         name="serviceType"
@@ -139,7 +139,7 @@ function DynamiskForm() {
       </select>
     </div>
   );
-
+  
   const renderCarRepairFields = () => (
     <div>
       <label htmlFor="registrationNumber">Registreringsnummer</label>
