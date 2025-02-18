@@ -526,7 +526,7 @@ footer {
   }
 }
 
-/* Modern Navigation Styles */
+
 nav {
   background: linear-gradient(to right, #2c3e50, #3498db);
   padding: 1rem 0;
@@ -556,14 +556,14 @@ nav h1 {
   margin: 0;
 }
 
-/* Navigation Links Container */
+
 nav > div > div > div {
   display: flex;
   gap: 2rem;
   align-items: center;
 }
 
-/* Link Groups */
+
 nav > div > div > div > div {
   display: flex;
   flex-direction: column;
@@ -572,7 +572,7 @@ nav > div > div > div > div {
   border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Group Headers */
+
 nav h2 {
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.9rem;
@@ -584,7 +584,7 @@ nav h2 {
   text-decoration: underline;
 }
 
-/* Navigation Links */
+
 nav a {
   color: white;
   text-decoration: none;
@@ -599,7 +599,7 @@ nav a:hover {
   transform: translateX(5px);
 }
 
-/* Chat Link Special Styling */
+
 nav a[href="chat"] {
   background: #27ae60;
   padding: 0.7rem 1.5rem;
@@ -613,7 +613,7 @@ nav a[href="chat"]:hover {
   transform: translateY(-2px);
 }
 
-/* Responsive Design */
+
 @media (max-width: 1024px) {
   nav > div > div {
     flex-direction: column;
