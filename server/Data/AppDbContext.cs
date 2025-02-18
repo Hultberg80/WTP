@@ -11,7 +11,8 @@ namespace server.Data
         }
         
         public DbSet<UserForm> Users { get; set; }
-
+        
+        public DbSet<Form> Forms { get; set; }
         public DbSet<FordonForm> FordonForms { get; set; }
         public DbSet<ForsakringsForm> ForsakringsForms { get; set; }
         public DbSet<TeleForm> TeleForms { get; set; }
@@ -96,6 +97,14 @@ namespace server.Data
                     
 
             });
+            
+        {
+            modelBuilder.Entity<Form>()
+                .Property(f => f.Fields)
+                .HasColumnType("jsonb"); // Specifikt för PostgreSQL
+
+            base.OnModelCreating(modelBuilder);
+        }
         }
     }
 }
