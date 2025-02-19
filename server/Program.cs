@@ -212,7 +212,7 @@ public class Program
 
         // Chat endpoints
         app.MapGet("/api/chat/{chatToken}", async (string chatToken, AppDbContext db) =>
-        {
+        {gi
             if (string.IsNullOrEmpty(chatToken))
             {
                 return Results.BadRequest("Ingen token angiven");
