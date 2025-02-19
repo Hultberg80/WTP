@@ -4,7 +4,11 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
-
+    <ItemGroup>
+        <None Update="Configs\formConfigs.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
     <ItemGroup>
         <PackageReference Include="MailKit" Version="4.10.0" />
         <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.1" />

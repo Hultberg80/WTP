@@ -36,6 +36,7 @@ public class Program
             options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddScoped<IFormConfigService, FormConfigService>();
 
         var app = builder.Build();
 
@@ -78,20 +79,32 @@ public class Program
             return user is null ? Results.NotFound() : Results.Ok(user);
         });
 
-        // Fordon Endpoints
-        app.MapPost("/api/fordon", async (FordonForm submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
+        // Dynamic Form Endpoint
+        app.MapPost("/api/forms", async (DynamicForm submission, AppDbContext db, 
+            IEmailService emailService, IFormConfigService formConfigService, IConfiguration config) =>
         {
             using var transaction = await db.Database.BeginTransactionAsync();
             try
             {
+                var formConfig = await formConfigService.GetFormConfig(submission.FormType);
+                if (formConfig == null)
+                {
+                    return Results.BadRequest(new { message = "Ogiltig formulärtyp" });
+                }
+
+                if (!formConfigService.ValidateFormData(submission.FormType, submission.Fields))
+                {
+                    return Results.BadRequest(new { message = "Alla obligatoriska fält är inte ifyllda" });
+                }
+
                 submission.ChatToken = Guid.NewGuid().ToString();
                 submission.SubmittedAt = DateTime.UtcNow;
                 submission.IsChatActive = true;
 
-                // Save form submission
-                db.FordonForms.Add(submission);
-                
-                // Create initial chat message
+                // Spara formuläret
+                db.DynamicForms.Add(submission);
+        
+                // Skapa chattmeddelande
                 var initialMessage = new ChatMessage
                 {
                     ChatToken = submission.ChatToken,
@@ -100,7 +113,7 @@ public class Program
                     Timestamp = submission.SubmittedAt
                 };
                 db.ChatMessages.Add(initialMessage);
-                
+        
                 await db.SaveChangesAsync();
 
                 var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
@@ -122,92 +135,11 @@ public class Program
             }
         });
 
-        // Tele Endpoints
-        app.MapPost("/api/tele", async (TeleForm submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
+        // Form Configuration Endpoint
+        app.MapGet("/api/forms/config/{formType}", async (string formType, IFormConfigService formConfigService) =>
         {
-            using var transaction = await db.Database.BeginTransactionAsync();
-            try
-            {
-                submission.ChatToken = Guid.NewGuid().ToString();
-                submission.SubmittedAt = DateTime.UtcNow;
-                submission.IsChatActive = true;
-
-                // Save form submission
-                db.TeleForms.Add(submission);
-                
-                // Create initial chat message
-                var initialMessage = new ChatMessage
-                {
-                    ChatToken = submission.ChatToken,
-                    Sender = submission.FirstName,
-                    Message = submission.Message,
-                    Timestamp = submission.SubmittedAt
-                };
-                db.ChatMessages.Add(initialMessage);
-                
-                await db.SaveChangesAsync();
-
-                var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
-                var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
-
-                await emailService.SendChatInvitation(
-                    submission.Email,
-                    chatLink,
-                    submission.FirstName
-                );
-
-                await transaction.CommitAsync();
-                return Results.Ok(new { message = "Formulär skickat", submission });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return Results.BadRequest(new { message = "Ett fel uppstod", error = ex.Message });
-            }
-        });
-
-        // Forsakring Endpoints
-        app.MapPost("/api/forsakring", async (ForsakringsForm submission, AppDbContext db, IEmailService emailService, IConfiguration config) =>
-        {
-            using var transaction = await db.Database.BeginTransactionAsync();
-            try
-            {
-                submission.ChatToken = Guid.NewGuid().ToString();
-                submission.SubmittedAt = DateTime.UtcNow;
-                submission.IsChatActive = true;
-
-                // Save form submission
-                db.ForsakringsForms.Add(submission);
-                
-                // Create initial chat message
-                var initialMessage = new ChatMessage
-                {
-                    ChatToken = submission.ChatToken,
-                    Sender = submission.FirstName,
-                    Message = submission.Message,
-                    Timestamp = submission.SubmittedAt
-                };
-                db.ChatMessages.Add(initialMessage);
-                
-                await db.SaveChangesAsync();
-
-                var baseUrl = config["BaseUrl"] ?? "http://localhost:3001";
-                var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
-
-                await emailService.SendChatInvitation(
-                    submission.Email,
-                    chatLink,
-                    submission.FirstName
-                );
-
-                await transaction.CommitAsync();
-                return Results.Ok(new { message = "Formulär skickat", submission });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return Results.BadRequest(new { message = "Ett fel uppstod", error = ex.Message });
-            }
+            var config = await formConfigService.GetFormConfig(formType);
+            return config == null ? Results.NotFound() : Results.Ok(config);
         });
 
         // Chat endpoints
@@ -220,7 +152,7 @@ public class Program
 
             try
             {
-                var initialMessage = await db.InitialFormMessages
+                var initialMessage = await db.DynamicMessages
                     .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
 
                 if (initialMessage == null)
@@ -231,7 +163,8 @@ public class Program
                 return Results.Ok(new {
                     firstName = initialMessage.Sender,
                     message = initialMessage.Message,
-                    formType = initialMessage.FormType,
+                    issueType = initialMessage.IssueType,
+                    companyType = initialMessage.CompanyType,
                     timestamp = initialMessage.Timestamp
                 });
             }
@@ -278,7 +211,7 @@ public class Program
         {
             try 
             {
-                var tickets = await db.InitialFormMessages
+                var tickets = await db.DynamicMessages
                     .OrderByDescending(f => f.Timestamp)
                     .ToListAsync();
 

@@ -3,116 +3,87 @@ using server.Models;
 
 namespace server.Data
 {
-    public class AppDbContext : DbContext
-    {
-        public AppDbContext(DbContextOptions<AppDbContext> options)
-            : base(options)
-        {
-        }
-        
-        public DbSet<UserForm> Users { get; set; }
-        
-        public DbSet<ChatMessage> ChatMessages { get; set; }
-        public DbSet<FordonForm> FordonForms { get; set; }
-        public DbSet<ForsakringsForm> ForsakringsForms { get; set; }
-        public DbSet<TeleForm> TeleForms { get; set; }
-        
-        public DbSet<InitialFormMessage> InitialFormMessages { get; set; }
+   public class AppDbContext : DbContext
+   {
+       public DbSet<DynamicForm> DynamicForms { get; set; } = null!;
+       public DbSet<FormConfiguration> FormConfigurations { get; set; } = null!;
+       public DbSet<ChatMessage> ChatMessages { get; set; } = null!;
+       public DbSet<UserForm> Users { get; set; } = null!;
+       public DbSet<DynamicMessage> DynamicMessages { get; set; } = null!;
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
+       public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+       {
+       }
 
+       protected override void OnModelCreating(ModelBuilder modelBuilder)
+       {
+           base.OnModelCreating(modelBuilder);
 
+           // DynamicForm konfiguration
+           modelBuilder.Entity<DynamicForm>(entity =>
+           {
+               entity.HasKey(e => e.Id);
+               entity.Property(e => e.FormType).HasMaxLength(50).IsRequired();
+               entity.Property(e => e.FirstName).HasMaxLength(100).IsRequired();
+               entity.Property(e => e.CompanyType).HasMaxLength(100).IsRequired();
+               entity.Property(e => e.Email).HasMaxLength(255).IsRequired();
+               entity.Property(e => e.Fields).HasColumnType("jsonb").IsRequired();
+               entity.Property(e => e.Message).HasColumnType("text").IsRequired();
+               entity.Property(e => e.ChatToken).HasMaxLength(255).IsRequired();
+               entity.Property(e => e.SubmittedAt).IsRequired();
+               entity.Property(e => e.IsChatActive).IsRequired();
+               
+               entity.HasIndex(e => e.ChatToken).IsUnique();
+           });
 
-            modelBuilder.Entity<FordonForm>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.FirstName).IsRequired();
-                entity.Property(e => e.Email).IsRequired();
-                entity.Property(e => e.CompanyType).IsRequired();
-                entity.Property(e => e.RegistrationNumber).IsRequired();
-                entity.Property(e => e.IssueType).IsRequired();
-                entity.Property(e => e.Message).IsRequired();
-                entity.Property(e => e.ChatToken).IsRequired();
-                entity.Property(e => e.SubmittedAt).IsRequired();
-                entity.Property(e => e.IsChatActive).IsRequired();
+           // FormConfiguration konfiguration
+           modelBuilder.Entity<FormConfiguration>(entity =>
+           {
+               entity.HasKey(e => e.Id);
+               entity.Property(e => e.FormType).HasMaxLength(50).IsRequired();
+               entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+               entity.Property(e => e.Configuration).HasColumnType("jsonb").IsRequired();
+               entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+               entity.Property(e => e.CreatedAt)
+                   .IsRequired()
+                   .HasDefaultValueSql("CURRENT_TIMESTAMP");
+               entity.Property(e => e.UpdatedAt)
+                   .IsRequired()
+                   .HasDefaultValueSql("CURRENT_TIMESTAMP");
+               
+               entity.HasIndex(e => e.FormType).IsUnique();
+           });
 
-                entity.HasIndex(e => e.ChatToken).IsUnique();
-            });
-            
-            modelBuilder.Entity<ForsakringsForm>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.FirstName).IsRequired();
-                entity.Property(e => e.CompanyType).IsRequired();
-                entity.Property(e => e.Email).IsRequired();
-                entity.Property(e => e.InsuranceType).IsRequired();
-                entity.Property(e => e.IssueType).IsRequired();
-                entity.Property(e => e.Message).IsRequired();
-                entity.Property(e => e.ChatToken).IsRequired();
-                entity.Property(e => e.SubmittedAt).IsRequired();
-                entity.Property(e => e.IsChatActive).IsRequired();
+           // ChatMessage konfiguration
+           modelBuilder.Entity<ChatMessage>(entity =>
+           {
+               entity.HasKey(e => e.Id);
+               entity.Property(e => e.ChatToken).HasMaxLength(255).IsRequired();
+               entity.Property(e => e.Sender).HasMaxLength(100).IsRequired();
+               entity.Property(e => e.Message).HasColumnType("text").IsRequired();
+               entity.Property(e => e.Timestamp).IsRequired();
+           });
 
-                entity.HasIndex(e => e.ChatToken).IsUnique();
-            });
-            
-            modelBuilder.Entity<TeleForm>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.FirstName).IsRequired();
-                entity.Property(e => e.CompanyType).IsRequired();
-                entity.Property(e => e.Email).IsRequired();
-                entity.Property(e => e.ServiceType).IsRequired();
-                entity.Property(e => e.IssueType).IsRequired();
-                entity.Property(e => e.Message).IsRequired();
-                entity.Property(e => e.ChatToken).IsRequired();
-                entity.Property(e => e.SubmittedAt).IsRequired();
-                entity.Property(e => e.IsChatActive).IsRequired();
+           // UserForm konfiguration
+           modelBuilder.Entity<UserForm>(entity =>
+           {
+               entity.HasKey(e => e.Id);
+               entity.Property(e => e.FirstName).HasMaxLength(50).IsRequired();
+               entity.Property(e => e.Password).HasMaxLength(100).IsRequired();
+               entity.Property(e => e.Company).HasMaxLength(50).IsRequired();
+               entity.Property(e => e.Role)
+                   .HasMaxLength(20)
+                   .IsRequired()
+                   .HasDefaultValue("staff");
+               entity.Property(e => e.CreatedAt)
+                   .IsRequired()
+                   .HasDefaultValueSql("CURRENT_TIMESTAMP");
+           });
 
-                entity.HasIndex(e => e.ChatToken).IsUnique();
-            });
-            modelBuilder.Entity<UserForm>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                
-                entity.Property(e => e.FirstName)
-                    .IsRequired()
-                    .HasMaxLength(50);
-                
-                entity.Property(e => e.Password)
-                    .IsRequired()
-                    .HasMaxLength(100);
-                
-                entity.Property(e => e.Company)     // Ny property
-                    .IsRequired()
-                    .HasMaxLength(50);
-                    
-                entity.Property(e => e.Role)
-                    .IsRequired()
-                    .HasMaxLength(20)
-                    .HasDefaultValue("staff");
-
-                entity.Property(e => e.CreatedAt)
-                    .IsRequired()
-                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
-                    
-
-            });
-            
-            modelBuilder.Entity<InitialFormMessage>()
-                .ToView("InitialFormMessages")
-                .HasNoKey();
-            
-            modelBuilder.Entity<ChatMessage>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.ChatToken).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.Sender).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Message).IsRequired();
-                entity.Property(e => e.Timestamp).IsRequired();
-            });
-            
-        }
-    }
+           // DynamicMessage View konfiguration
+           modelBuilder.Entity<DynamicMessage>()
+               .ToView("DynamicMessages")
+               .HasNoKey();
+       }
+   }
 }

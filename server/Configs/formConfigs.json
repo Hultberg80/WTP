@@ -1,0 +1,133 @@
+{
+  "forms": {
+    "fordon": {
+      "name": "Fordonsformulär",
+      "fields": [
+        {
+          "key": "firstName",
+          "label": "Förnamn",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "E-post",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "registrationNumber",
+          "label": "Registreringsnummer",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "issueType",
+          "label": "Typ av ärende",
+          "type": "select",
+          "options": ["Service", "Reparation", "Försäljning"],
+          "required": true
+        },
+        {
+          "key": "message",
+          "label": "Beskrivning av ärende",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    },
+    "forsakring": {
+      "name": "Försäkringsformulär",
+      "fields": [
+        {
+          "key": "firstName",
+          "label": "Förnamn",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "E-post",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "insuranceType",
+          "label": "Försäkringstyp",
+          "type": "select",
+          "options": ["Fordonsförsäkring", "Företagsförsäkring"],
+          "required": true
+        },
+        {
+          "key": "issueType",
+          "label": "Ärendetyp",
+          "type": "select",
+          "options": ["Ny försäkring", "Ändring", "Skada"],
+          "required": true
+        },
+        {
+          "key": "message",
+          "label": "Beskrivning av ärende",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    },
+    "telefoni": {
+      "name": "Telefoni/Bredband",
+      "fields": [
+        {
+          "key": "firstName",
+          "label": "Förnamn",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "email",
+          "label": "E-post",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "phoneNumber",
+          "label": "Telefonnummer",
+          "type": "text",
+          "required": true
+        },
+        {
+          "key": "serviceType",
+          "label": "Typ av tjänst",
+          "type": "select",
+          "options": [
+            "Mobilabonnemang",
+            "Bredbandsabonnemang",
+            "Fast telefoni",
+            "Fiber",
+            "IP-telefoni"
+          ],
+          "required": true
+        },
+        {
+          "key": "issueType",
+          "label": "Ärendetyp",
+          "type": "select",
+          "options": [
+            "Ny beställning",
+            "Fakturafråga",
+            "Tekniskt problem",
+            "Byte av abonnemang",
+            "Uppsägning",
+            "Supportärende"
+          ],
+          "required": true
+        },
+        {
+          "key": "message",
+          "label": "Beskrivning av ärende",
+          "type": "textarea",
+          "required": true
+        }
+      ]
+    }
+  }
+}
