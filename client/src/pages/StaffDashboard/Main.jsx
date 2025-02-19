@@ -14,10 +14,10 @@ function Main() {
             
             const newTickets = data.map(ticket => ({
                 ...ticket,
-                id: ticket.chatToken,
-                issueType: `${ticket.sender} - ${ticket.formType}`,
-                wtp: ticket.formType,
-                chatLink: `http://localhost:3001/chat/${ticket.chatToken}`
+                id: ticket.chattoken,
+                issueType: `${ticket.sender} - ${ticket.issuetype}`,
+                companyType: ticket.companytype,
+                chatLink: `http://localhost:3001/chat/${ticket.chattoken}`
             }));
 
             updateTasks(newTickets);
@@ -44,11 +44,11 @@ function Main() {
 
     const updateTasks = (newTickets) => {
         setTasks(prevTasks => {
-            const existingTasks = new Map(prevTasks.map(task => [task.chatToken, task]));
+            const existingTasks = new Map(prevTasks.map(task => [task.chattoken, task]));
             
             const updatedTasks = newTickets.map(ticket => ({
                 ...ticket,
-                ...existingTasks.get(ticket.chatToken)
+                ...existingTasks.get(ticket.chattoken)
             }));
 
             return updatedTasks.sort((a, b) => 
@@ -129,9 +129,9 @@ function Main() {
                             {task.issueType}
                         </div>
                         <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
+                            <div className="ticket-wtp">{task.companyType}</div>
                             <div className="ticket-task-email">{task.email}</div>
-                            <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
+                            <div className="ticket-task-time">{formatDate(task.timestamp)}</div>
                             <div className="ticket-task-token">
                                 <a 
                                     href={task.chatLink} 
@@ -167,9 +167,9 @@ function Main() {
                             {task.issueType}
                         </div>
                         <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
+                            <div className="ticket-wtp">{task.companyType}</div>
                             <div className="ticket-task-email">{task.email}</div>
-                            <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
+                            <div className="ticket-task-time">{formatDate(task.timestamp)}</div>
                             <div className="ticket-task-token">
                                 <a 
                                     href={task.chatLink} 
@@ -205,7 +205,7 @@ function Main() {
                             {task.issueType}
                         </div>
                         <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
+                            <div className="ticket-wtp">{task.companyType}</div>
                         
                             <div className="ticket-task-time">{formatDate(task.timestamp)}</div> 
                             <div className="ticket-task-token">

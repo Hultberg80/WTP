@@ -22,7 +22,7 @@ export default function Chat() {
         }
 
         try {
-            // Fetch initial chat info from InitialFormMessages
+            // Fetch initial chat info from DynamicMessages
             const chatResponse = await fetch(`/api/chat/${token}`);
             if (!chatResponse.ok) {
                 throw new Error('Could not fetch chat info');
@@ -66,7 +66,7 @@ export default function Chat() {
         try {
             const newMessage = {
                 chatToken: token,
-                sender: chatData.sender,  // To this
+                sender: 'Agent',
                 message: message,
                 timestamp: new Date().toISOString()
             };
@@ -124,15 +124,15 @@ export default function Chat() {
     return (
         <div className="chat-container">
             <div className="chat-header">
-                <h2 className="chat-namn">{chatData.firstName}</h2>
-                {chatData.formType && <div className="chat-type">{chatData.formType}</div>}
+                <h2 className="chat-namn">{chatData.sender}</h2>
+                {chatData.issuetype && <div className="chat-type">{chatData.issuetype}</div>}
             </div>
             
             <div className="messages-container">
                 {messages.map((msg, index) => (
                     <div 
                         key={msg.id || index}
-                        className={`message ${msg.sender === chatData.firstName ? 'sent' : 'received'}`}
+                        className={`message ${msg.sender === 'Agent' ? 'sent' : 'received'}`}
                     >
                         <p>{msg.message}</p>
                         <small>{new Date(msg.timestamp).toLocaleString()}</small>

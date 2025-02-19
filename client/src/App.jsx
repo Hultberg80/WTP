@@ -18,7 +18,7 @@ function App() {
         
         <Route path="/" element={<Layout />}>
           <Route index element={<DynamiskForm />} />
-          <Route path="dynamisk" element={<DynamiskForm />} />
+          <Route path="dynamisk/:formType" element={<DynamiskForm />} />
           
           <Route path="admin">
             <Route path="login" element={<AdminLogin />} />
