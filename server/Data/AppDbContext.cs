@@ -11,10 +11,13 @@ namespace server.Data
         }
         
         public DbSet<UserForm> Users { get; set; }
-
+        
+        public DbSet<ChatMessage> ChatMessages { get; set; }
         public DbSet<FordonForm> FordonForms { get; set; }
         public DbSet<ForsakringsForm> ForsakringsForms { get; set; }
         public DbSet<TeleForm> TeleForms { get; set; }
+        
+        public DbSet<InitialFormMessage> InitialFormMessages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -96,6 +99,20 @@ namespace server.Data
                     
 
             });
+            
+            modelBuilder.Entity<InitialFormMessage>()
+                .ToView("InitialFormMessages")
+                .HasNoKey();
+            
+            modelBuilder.Entity<ChatMessage>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ChatToken).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Sender).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Message).IsRequired();
+                entity.Property(e => e.Timestamp).IsRequired();
+            });
+            
         }
     }
 }
