@@ -1,6 +1,7 @@
 // Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
 import { useState, useEffect, useCallback, useRef } from "react";
 import Aside from "./Aside";
+import { Link } from 'react-router-dom'; // Importera Link från React Router
 
 // Definierar huvudkomponenten för applikationen
 function Main() {
@@ -28,11 +29,16 @@ function Main() {
             }
             setError(null);
     
-            const response = await fetch('/api/tickets', {
+            // Lägg till timestamp för att förhindra caching
+            const timestamp = new Date().getTime();
+            const response = await fetch(`/api/tickets?_=${timestamp}`, {
                 credentials: 'include', // Viktigt för att skicka med cookies
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
                 }
             });
             
@@ -51,7 +57,7 @@ function Main() {
                 id: ticket.chatToken,
                 issueType: `${ticket.sender} - ${ticket.formType}`,
                 wtp: ticket.formType,
-                chatLink: `http://localhost:3001/chat/${ticket.chatToken}`
+                chatLink: `/chat/${ticket.chatToken}`  // Relativ URL för React Router
             }));
     
             updateTasks(newTickets);
@@ -66,8 +72,42 @@ function Main() {
         }
     }, []);
 
+    // Uppdaterad funktion som andra kan anropa för att uppdatera tasks
+    const updateTasks = useCallback((newTickets) => {
+        setTasks(prevTasks => {
+            // Skapar en Map med existerande ärenden för snabb uppslagning
+            const existingTasks = new Map(prevTasks.map(task => [task.chatToken, task]));
+
+            // Kombinerar nya ärenden med existerande data
+            const updatedTasks = newTickets.map(ticket => ({
+                ...ticket,
+                ...existingTasks.get(ticket.chatToken)
+            }));
+
+            // Sorterar ärenden efter timestamp, nyaste först
+            return updatedTasks.sort((a, b) =>
+                new Date(b.timestamp) - new Date(a.timestamp)
+            );
+        });
+    }, []);
+
     // Effekt som körs när komponenten monteras
     useEffect(() => {
+        // Definiera en global funktion som kan anropas från sessionRefresh.js
+        window.refreshAppData = (data) => {
+            if (data && data.recentData) {
+                // Uppdatera dina tasks med den nya datan
+                const formattedData = data.recentData.map(ticket => ({
+                    ...ticket,
+                    id: ticket.chatToken,
+                    issueType: `${ticket.sender} - ${ticket.formType}`,
+                    wtp: ticket.formType,
+                    chatLink: `/chat/${ticket.chatToken}`  // Relativ URL för React Router
+                }));
+                updateTasks(formattedData);
+            }
+        };
+        
         // Hämtar ärenden direkt
         fetchTickets();
 
@@ -84,27 +124,9 @@ function Main() {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
             }
+            window.refreshAppData = undefined;
         };
-    }, [fetchTickets]);
-
-    // Funktion för att uppdatera ärendelistan med ny data
-    const updateTasks = (newTickets) => {
-        setTasks(prevTasks => {
-            // Skapar en Map med existerande ärenden för snabb uppslagning
-            const existingTasks = new Map(prevTasks.map(task => [task.chatToken, task]));
-
-            // Kombinerar nya ärenden med existerande data
-            const updatedTasks = newTickets.map(ticket => ({
-                ...ticket,
-                ...existingTasks.get(ticket.chatToken)
-            }));
-
-            // Sorterar ärenden efter timestamp, nyaste först
-            return updatedTasks.sort((a, b) =>
-                new Date(b.timestamp) - new Date(a.timestamp)
-            );
-        });
-    };
+    }, [fetchTickets, updateTasks]);
 
     // Funktion som körs när man börjar dra ett ärende
     const handleDragStart = (task) => {
@@ -152,15 +174,16 @@ function Main() {
         });
     };
 
+    // Funktion för att öppna chat i nytt fönster eller flik
+    const openChat = (chatLink, event) => {
+        event.preventDefault();
+        window.open(chatLink, '_blank', 'noopener,noreferrer');
+    };
 
-
-    // Huvudvy för applikationen
+    // Huvud-vyn för applikationen
     return (
-        // Huvudcontainer
         <div className="main-container">
-            
             <Aside />
-
             
             <div
                 className="ticket-tasks"
@@ -169,15 +192,14 @@ function Main() {
             >
                 <h2 className="ticket-tasks-header">Ärenden</h2>
                 {tasks.map((task) => (
-                    // Container för varje ärende
                     <div
                         key={task.id}
                         draggable
                         onDragStart={() => handleDragStart(task)}
                         className="ticket-task-item"
                     >
-                        
-                        <div className="ticket-task-content"
+                        <div 
+                            className="ticket-task-content"
                             contentEditable
                             suppressContentEditableWarning={true}
                             onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setTasks)}
@@ -190,10 +212,9 @@ function Main() {
                             <div className="ticket-task-email">{task.email}</div>
                             <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
                             <div className="ticket-task-token">
-                                
                                 <a
                                     href={task.chatLink}
-                                    target="_blank"
+                                    onClick={(e) => openChat(task.chatLink, e)}
                                     rel="noopener noreferrer"
                                 >
                                     Öppna chatt
@@ -203,7 +224,6 @@ function Main() {
                     </div>
                 ))}
             </div>
-
             
             <div
                 className="ticket-my-tasks"
@@ -212,15 +232,14 @@ function Main() {
             >
                 <h2 className="ticket-my-tasks-header">Mina ärenden</h2>
                 {myTasks.map((task) => (
-                    
                     <div
                         key={task.id}
                         draggable
                         onDragStart={() => handleDragStart(task)}
                         className="ticket-task-item"
                     >
-                        
-                        <div className="ticket-task-content"
+                        <div 
+                            className="ticket-task-content"
                             contentEditable
                             suppressContentEditableWarning={true}
                             onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setMyTasks)}
@@ -233,10 +252,9 @@ function Main() {
                             <div className="ticket-task-email">{task.email}</div>
                             <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
                             <div className="ticket-task-token">
-                               
                                 <a
                                     href={task.chatLink}
-                                    target="_blank"
+                                    onClick={(e) => openChat(task.chatLink, e)}
                                     rel="noopener noreferrer"
                                 >
                                     Öppna chatt
@@ -246,7 +264,6 @@ function Main() {
                     </div>
                 ))}
             </div>
-
            
             <div
                 className="ticket-done"
@@ -255,15 +272,14 @@ function Main() {
             >
                 <h2 className="ticket-done-header">Klara</h2>
                 {done.map((task) => (
-                    
                     <div
                         key={task.id}
                         draggable
                         onDragStart={() => handleDragStart(task)}
                         className="ticket-task-item"
                     >
-                        
-                        <div className="ticket-task-content"
+                        <div 
+                            className="ticket-task-content"
                             contentEditable
                             suppressContentEditableWarning={true}
                             onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setDone)}
@@ -275,10 +291,9 @@ function Main() {
                             <div className="ticket-wtp">{task.wtp}</div>
                             <div className="ticket-task-time">{formatDate(task.timestamp)}</div>
                             <div className="ticket-task-token">
-                               
                                 <a
                                     href={task.chatLink}
-                                    target="_blank"
+                                    onClick={(e) => openChat(task.chatLink, e)}
                                     rel="noopener noreferrer"
                                 >
                                     Öppna chatt
@@ -292,5 +307,4 @@ function Main() {
     );
 }
 
-// Exporterar Main-komponenten som default export
 export default Main;
