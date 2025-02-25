@@ -1,6 +1,7 @@
 // Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
 import { useState, useEffect, useCallback, useRef } from "react";
 import Aside from "./Aside";
+import ChatModal from "./ChatModal"; // Importera ChatModal-komponenten
 
 // Definierar huvudkomponenten för applikationen
 function Main() {
@@ -20,6 +21,10 @@ function Main() {
     const intervalRef = useRef(null);
     // Referens för att hålla koll på om det är första laddningen
     const initialLoadRef = useRef(true);
+    // State för att hålla koll på om chattmodalen är öppen
+    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+    // State för att hålla koll på vilken chatt som är öppen
+    const [currentChatToken, setCurrentChatToken] = useState(null);
 
     const fetchTickets = useCallback(async () => {
         try {
@@ -51,7 +56,7 @@ function Main() {
                 id: ticket.chatToken,
                 issueType: `${ticket.sender} - ${ticket.formType}`,
                 wtp: ticket.formType,
-                chatLink: `http://localhost:3001/chat/${ticket.chatToken}`
+                chatToken: ticket.chatToken // Se till att chatToken är tillgänglig
             }));
     
             updateTasks(newTickets);
@@ -152,7 +157,17 @@ function Main() {
         });
     };
 
+    // Funktion för att öppna chattmodalen
+    const openChatModal = (token) => {
+        setCurrentChatToken(token);
+        setIsChatModalOpen(true);
+    };
 
+    // Funktion för att stänga chattmodalen
+    const closeChatModal = () => {
+        setIsChatModalOpen(false);
+        setCurrentChatToken(null);
+    };
 
     // Huvudvy för applikationen
     return (
@@ -191,13 +206,12 @@ function Main() {
                             <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
                             <div className="ticket-task-token">
                                 
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    onClick={() => openChatModal(task.chatToken)}
+                                    className="open-chat-btn"
                                 >
                                     Öppna chatt
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -234,13 +248,12 @@ function Main() {
                             <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
                             <div className="ticket-task-token">
                                
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    onClick={() => openChatModal(task.chatToken)}
+                                    className="open-chat-btn"
                                 >
                                     Öppna chatt
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -276,18 +289,25 @@ function Main() {
                             <div className="ticket-task-time">{formatDate(task.timestamp)}</div>
                             <div className="ticket-task-token">
                                
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    onClick={() => openChatModal(task.chatToken)}
+                                    className="open-chat-btn"
                                 >
                                     Öppna chatt
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
                 ))}
             </div>
+
+            {/* Visa chattmodalen om den är öppen */}
+            {isChatModalOpen && currentChatToken && (
+                <ChatModal 
+                    token={currentChatToken} 
+                    onClose={closeChatModal} 
+                />
+            )}
         </div>
     );
 }

@@ -6,16 +6,14 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import StaffDashboard from './pages/StaffDashboard/Header';
 import StaffLogin from './pages/StaffLogin';
-import Chat from './pages/Chat';
 import Faq from './pages/Faq';
+
+// Vi behöver inte längre en separat Chat-route eftersom vi använder modal istället
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Chat route först */}
-        <Route path="/chat/:token" element={<Chat />} />
-        
         <Route path="/" element={<Layout />}>
           <Route index element={<DynamiskForm />} />
           <Route path="dynamisk" element={<DynamiskForm />} />

@@ -970,8 +970,110 @@ nav a[href="chat"]:hover {
   }
 }
 
+/* Styling för chattöppningsknappen */
+.open-chat-btn {
+  background: linear-gradient(to right, #0ea5e9, #0284c7);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+  text-decoration: none;
+}
 
+.open-chat-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(14, 165, 233, 0.2);
+}
 
+/* Justera modal position */
+.chat-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
 
+/* Animation för modal */
+.chat-modal__container {
+  animation: modalFadeIn 0.3s ease;
+}
 
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
+/* Responsiv design för chattmodalen */
+@media (max-width: 768px) {
+  .chat-modal__container {
+    width: 90%;
+    height: 80vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .chat-modal__container {
+    width: 95%;
+    height: 90vh;
+  }
+  
+  .chat-modal__input-container {
+    flex-wrap: wrap;
+  }
+  
+  .chat-modal__input-field {
+    flex: 0 0 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Spinner för laddning */
+.loading-spinner {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #0ea5e9;
+  animation: spin 1s ease-in-out infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.chat-modal__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 20px;
+  color: #4b5563;
+}
+
+.chat-modal__loading p {
+  margin-bottom: 20px;
+}
