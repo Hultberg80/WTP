@@ -1,289 +1,342 @@
-﻿using Microsoft.EntityFrameworkCore; // Importerar EntityFrameworkCore för att kunna använda databas
-using server.Data; // Importerar server.Data för att få tillgång till AppDbContext
-using server.Services; // Importerar server.Services för att få tillgång till EmailService
-using server.Models; // Importerar server.Models för att få tillgång till datamodeller
-using System.Text.Json; // Importerar System.Text.Json för JSON-serialisering
+﻿using Microsoft.EntityFrameworkCore;
+using server.Data;
+using server.Services;
+using server.Models;
+using System.Text.Json;
 
-namespace server; // Deklarerar namnrymden för serverprojektet
+namespace server;
 
-public class Program // Deklarerar huvudklassen Program
+public class Program
 {
-    public static void Main(string[] args) // Deklarerar huvudmetoden Main
+    public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args); // Skapar en WebApplicationBuilder
+        var builder = WebApplication.CreateBuilder(args);
 
-        builder.Services.AddEndpointsApiExplorer(); // Lägger till API Explorer för Swagger
-        builder.Services.AddSwaggerGen(); // Lägger till Swagger-generering
-        builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
-        builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+        builder.Services.AddAuthentication();
+        builder.Services.AddAuthorization();
 
-        builder.Services.AddCors(options => // Lägger till CORS-stöd
+        // Lägg till sessionsstöd
+        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSession(options =>
         {
-            options.AddPolicy("AllowReactApp", // Definierar en CORS-policy för React-appen
+            options.IdleTimeout = TimeSpan.FromHours(2);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+        });
+
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowReactApp",
                 builder =>
                 {
                     builder
-                        .WithOrigins( // Anger tillåtna ursprung för CORS
+                        .WithOrigins(
                             "http://localhost:3001",
                             "https://localhost:3001"
                         )
-                        .AllowAnyMethod() // Tillåter alla HTTP-metoder
-                        .AllowAnyHeader(); // Tillåter alla HTTP-headers
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials(); // Viktigt för att skicka cookies/sessions
                 });
         });
 
-        builder.Services.AddDbContext<AppDbContext>(options => // Konfigurerar databasanslutning
+        builder.Services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(
-                builder.Configuration.GetConnectionString("DefaultConnection"))); // Använder PostgreSQL som databas
+                builder.Configuration.GetConnectionString("DefaultConnection")));
 
-        builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
+        builder.Services.AddScoped<IEmailService, EmailService>();
 
-        var app = builder.Build(); // Bygger WebApplication-instansen
+        var app = builder.Build();
 
-        if (app.Environment.IsDevelopment()) // Kontrollerar om miljön är utvecklingsmiljö
+        if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger(); // Aktiverar Swagger
-            app.UseSwaggerUI(); // Aktiverar Swagger UI
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
 
-        app.UseHttpsRedirection(); // Aktiverar HTTPS-omdirigering
-        app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
-        app.UseAuthentication(); // Aktiverar autentisering
-        app.UseAuthorization(); // Aktiverar auktorisering
+        app.UseHttpsRedirection();
+        app.UseCors("AllowReactApp");
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseSession(); // Aktivera sessions
+
+        // Lägg till cache-kontroll middleware
+        app.Use(async (context, next) => 
+        {
+            // Tillämpa anti-cache headers för API-anrop
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+                context.Response.Headers.Add("Pragma", "no-cache");
+                context.Response.Headers.Add("Expires", "0");
+            }
+            
+            await next();
+        });
+
+        // Nya session-endpoint
+        app.MapGet("/api/session/refresh", async (HttpContext httpContext, AppDbContext db) => 
+        {
+            // Kontrollera/skapa session
+            if (httpContext.Session.GetString("UserSession") == null)
+            {
+                httpContext.Session.SetString("UserSession", Guid.NewGuid().ToString());
+            }
+            
+            // Hämta aktuella data - lägg till ett timestamp för varje hämtning
+            httpContext.Session.SetString("LastRefresh", DateTime.UtcNow.ToString("o"));
+            
+            var freshData = await db.InitialFormMessages
+                .OrderByDescending(f => f.Timestamp)
+                .Take(20)
+                .ToListAsync();
+            
+            // Förhindra cache
+            httpContext.Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
+            httpContext.Response.Headers.Add("Pragma", "no-cache");
+            httpContext.Response.Headers.Add("Expires", "0");
+            
+            return Results.Ok(new { 
+                sessionId = httpContext.Session.GetString("UserSession"),
+                timestamp = DateTime.UtcNow,
+                recentData = freshData
+            });
+        });
 
         // User Endpoints
         app.MapPost("/api/users",
-            async (UserForm user, AppDbContext db) => // Mappar POST-begäran för att skapa en användare
+            async (UserForm user, AppDbContext db) =>
             {
                 try
                 {
-                    user.CreatedAt = DateTime.UtcNow; // Sätter skapandetidpunkt till aktuell UTC-tid
-                    db.Users.Add(user); // Lägger till användaren i databasen
-                    await db.SaveChangesAsync(); // Sparar ändringar i databasen asynkront
+                    user.CreatedAt = DateTime.UtcNow;
+                    db.Users.Add(user);
+                    await db.SaveChangesAsync();
                     return Results.Ok(new
                     {
                         message = "Användare skapad", user
-                    }); // Returnerar ett OK-resultat med meddelande och användare
+                    });
                 }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(new
                     {
                         message = "Kunde inte skapa användare", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
-        app.MapGet("/api/users", async (AppDbContext db) => // Mappar GET-begäran för att hämta alla användare
+        app.MapGet("/api/users", async (AppDbContext db) =>
         {
-            var users = await db.Users.ToListAsync(); // Hämtar alla användare från databasen asynkront
-            return Results.Ok(users); // Returnerar ett OK-resultat med användarna
+            var users = await db.Users.ToListAsync();
+            return Results.Ok(users);
         });
 
         app.MapGet("/api/users/{id}",
-            async (int id, AppDbContext db) => // Mappar GET-begäran för att hämta en användare baserat på ID
+            async (int id, AppDbContext db) =>
             {
-                var user = await db.Users.FindAsync(id); // Söker efter användaren med det angivna ID:et asynkront
+                var user = await db.Users.FindAsync(id);
                 return
                     user is null
                         ? Results.NotFound()
-                        : Results.Ok(user); // Returnerar NotFound om användaren inte hittas, annars OK med användaren
+                        : Results.Ok(user);
             });
 
         // Fordon Endpoints
         app.MapPost("/api/fordon",
             async (FordonForm submission, AppDbContext db, IEmailService emailService,
-                IConfiguration config) => // Mappar POST-begäran för att skicka in fordonsformulär
+                IConfiguration config) =>
             {
-                using var transaction = await db.Database.BeginTransactionAsync(); // Startar en databastransaktion
+                using var transaction = await db.Database.BeginTransactionAsync();
                 try
                 {
-                    submission.ChatToken = Guid.NewGuid().ToString(); // Genererar en unik chat-token
-                    submission.SubmittedAt = DateTime.UtcNow; // Sätter inskickningstidpunkt till aktuell UTC-tid
-                    submission.IsChatActive = true; // Sätter chat som aktiv
+                    submission.ChatToken = Guid.NewGuid().ToString();
+                    submission.SubmittedAt = DateTime.UtcNow;
+                    submission.IsChatActive = true;
 
                     // Save form submission
-                    db.FordonForms.Add(submission); // Lägger till fordonsformuläret i databasen
+                    db.FordonForms.Add(submission);
 
                     // Create initial chat message
-                    var initialMessage = new ChatMessage // Skapar ett initialt chattmeddelande
+                    var initialMessage = new ChatMessage
                     {
-                        ChatToken = submission.ChatToken, // Sätter chat-token
-                        Sender = submission.FirstName, // Sätter avsändare till förnamnet från formuläret
-                        Message = submission.Message, // Sätter meddelande från formuläret
-                        Timestamp = submission.SubmittedAt // Sätter tidsstämpel till inskickningstidpunkten
+                        ChatToken = submission.ChatToken,
+                        Sender = submission.FirstName,
+                        Message = submission.Message,
+                        Timestamp = submission.SubmittedAt
                     };
-                    db.ChatMessages.Add(initialMessage); // Lägger till det initiala chattmeddelandet i databasen
+                    db.ChatMessages.Add(initialMessage);
 
-                    await db.SaveChangesAsync(); // Sparar ändringar i databasen asynkront
+                    await db.SaveChangesAsync();
 
                     var baseUrl =
                         config["BaseUrl"] ??
-                        "http://localhost:3001"; // Hämtar baswebbadressen från konfiguration eller använder standardvärde
-                    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}"; // Skapar en länk till chatten
+                        "http://localhost:3001";
+                    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
 
-                    await emailService.SendChatInvitation( // Skickar en chattinbjudan via e-post
-                        submission.Email, // E-postadress från formuläret
-                        chatLink, // Chattlänk
-                        submission.FirstName // Förnamn från formuläret
+                    await emailService.SendChatInvitation(
+                        submission.Email,
+                        chatLink,
+                        submission.FirstName
                     );
 
-                    await transaction.CommitAsync(); // Genomför databasens transaktion
+                    await transaction.CommitAsync();
                     return Results.Ok(new
                     {
                         message = "Formulär skickat", submission
-                    }); // Returnerar ett OK-resultat med meddelande och inlämnat formulär
+                    });
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync(); // Återställer databasens transaktion vid fel
+                    await transaction.RollbackAsync();
                     return Results.BadRequest(new
                     {
                         message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
         // Tele Endpoints
         app.MapPost("/api/tele",
             async (TeleForm submission, AppDbContext db, IEmailService emailService,
-                IConfiguration config) => // Mappar POST-begäran för att skicka in teleformulär
+                IConfiguration config) =>
             {
-                using var transaction = await db.Database.BeginTransactionAsync(); // Startar en databastransaktion
+                using var transaction = await db.Database.BeginTransactionAsync();
                 try
                 {
-                    submission.ChatToken = Guid.NewGuid().ToString(); // Genererar en unik chat-token
-                    submission.SubmittedAt = DateTime.UtcNow; // Sätter inskickningstidpunkt till aktuell UTC-tid
-                    submission.IsChatActive = true; // Sätter chat som aktiv
+                    submission.ChatToken = Guid.NewGuid().ToString();
+                    submission.SubmittedAt = DateTime.UtcNow;
+                    submission.IsChatActive = true;
 
                     // Save form submission
-                    db.TeleForms.Add(submission); // Lägger till teleformuläret i databasen
+                    db.TeleForms.Add(submission);
 
                     // Create initial chat message
-                    var initialMessage = new ChatMessage // Skapar ett initialt chattmeddelande
+                    var initialMessage = new ChatMessage
                     {
-                        ChatToken = submission.ChatToken, // Sätter chat-token
-                        Sender = submission.FirstName, // Sätter avsändare till förnamnet från formuläret
-                        Message = submission.Message, // Sätter meddelande från formuläret
-                        Timestamp = submission.SubmittedAt // Sätter tidsstämpel till inskickningstidpunkten
+                        ChatToken = submission.ChatToken,
+                        Sender = submission.FirstName,
+                        Message = submission.Message,
+                        Timestamp = submission.SubmittedAt
                     };
-                    db.ChatMessages.Add(initialMessage); // Lägger till det initiala chattmeddelandet i databasen
+                    db.ChatMessages.Add(initialMessage);
 
-                    await db.SaveChangesAsync(); // Sparar ändringar i databasen asynkront
+                    await db.SaveChangesAsync();
 
                     var baseUrl =
                         config["BaseUrl"] ??
-                        "http://localhost:3001"; // Hämtar baswebbadressen från konfiguration eller använder standardvärde
-                    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}"; // Skapar en länk till chatten
+                        "http://localhost:3001";
+                    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
 
-                    await emailService.SendChatInvitation( // Skickar en chattinbjudan via e-post
-                        submission.Email, // E-postadress från formuläret
-                        chatLink, // Chattlänk
-                        submission.FirstName // Förnamn från formuläret
+                    await emailService.SendChatInvitation(
+                        submission.Email,
+                        chatLink,
+                        submission.FirstName
                     );
 
-                    await transaction.CommitAsync(); // Genomför databasens transaktion
+                    await transaction.CommitAsync();
                     return Results.Ok(new
                     {
                         message = "Formulär skickat", submission
-                    }); // Returnerar ett OK-resultat med meddelande och inlämnat formulär
+                    });
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync(); // Återställer databasens transaktion vid fel
+                    await transaction.RollbackAsync();
                     return Results.BadRequest(new
                     {
                         message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
         // Forsakring Endpoints
         app.MapPost("/api/forsakring",
             async (ForsakringsForm submission, AppDbContext db, IEmailService emailService,
-                IConfiguration config) => // Mappar POST-begäran för att skicka in försäkringsformulär
+                IConfiguration config) =>
             {
-                using var transaction = await db.Database.BeginTransactionAsync(); // Startar en databastransaktion
+                using var transaction = await db.Database.BeginTransactionAsync();
                 try
                 {
-                    submission.ChatToken = Guid.NewGuid().ToString(); // Genererar en unik chat-token
-                    submission.SubmittedAt = DateTime.UtcNow; // Sätter inskickningstidpunkt till aktuell UTC-tid
-                    submission.IsChatActive = true; // Sätter chat som aktiv
+                    submission.ChatToken = Guid.NewGuid().ToString();
+                    submission.SubmittedAt = DateTime.UtcNow;
+                    submission.IsChatActive = true;
 
                     // Save form submission
-                    db.ForsakringsForms.Add(submission); // Lägger till försäkringsformuläret i databasen
+                    db.ForsakringsForms.Add(submission);
 
                     // Create initial chat message
-                    var initialMessage = new ChatMessage // Skapar ett initialt chattmeddelande
+                    var initialMessage = new ChatMessage
                     {
-                        ChatToken = submission.ChatToken, // Sätter chat-token
-                        Sender = submission.FirstName, // Sätter avsändare till förnamnet från formuläret
-                        Message = submission.Message, // Sätter meddelande från formuläret
-                        Timestamp = submission.SubmittedAt // Sätter tidsstämpel till inskickningstidpunkten
+                        ChatToken = submission.ChatToken,
+                        Sender = submission.FirstName,
+                        Message = submission.Message,
+                        Timestamp = submission.SubmittedAt
                     };
-                    db.ChatMessages.Add(initialMessage); // Lägger till det initiala chattmeddelandet i databasen
+                    db.ChatMessages.Add(initialMessage);
 
-                    await db.SaveChangesAsync(); // Sparar ändringar i databasen asynkront
+                    await db.SaveChangesAsync();
 
                     var baseUrl =
                         config["BaseUrl"] ??
-                        "http://localhost:3001"; // Hämtar baswebbadressen från konfiguration eller använder standardvärde
-                    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}"; // Skapar en länk till chatten
+                        "http://localhost:3001";
+                    var chatLink = $"{baseUrl}/chat/{submission.ChatToken}";
 
-                    await emailService.SendChatInvitation( // Skickar en chattinbjudan via e-post
-                        submission.Email, // E-postadress från formuläret
-                        chatLink, // Chattlänk
-                        submission.FirstName // Förnamn från formuläret
+                    await emailService.SendChatInvitation(
+                        submission.Email,
+                        chatLink,
+                        submission.FirstName
                     );
 
-                    await transaction.CommitAsync(); // Genomför databasens transaktion
+                    await transaction.CommitAsync();
                     return Results.Ok(new
                     {
                         message = "Formulär skickat", submission
-                    }); // Returnerar ett OK-resultat med meddelande och inlämnat formulär
+                    });
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync(); // Återställer databasens transaktion vid fel
+                    await transaction.RollbackAsync();
                     return Results.BadRequest(new
                     {
                         message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
         // Chat endpoints
         app.MapGet("/api/chat/{chatToken}",
             async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattinformation baserat på chat-token
+                AppDbContext db) =>
             {
-                if (string.IsNullOrEmpty(chatToken)) // Kontrollerar om chat-token är null eller tom
+                if (string.IsNullOrEmpty(chatToken))
                 {
                     return
                         Results.BadRequest(
-                            "Ingen token angiven"); // Returnerar ett BadRequest-resultat om ingen token anges
+                            "Ingen token angiven");
                 }
 
                 try
                 {
                     var initialMessage = await db
-                        .InitialFormMessages // Hämtar det initiala formulärmeddelandet baserat på chat-token
+                        .InitialFormMessages
                         .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
 
-                    if (initialMessage == null) // Kontrollerar om inget initialt meddelande hittas
+                    if (initialMessage == null)
                     {
                         return
                             Results.NotFound(
-                                "Ingen chatt hittades med denna token"); // Returnerar ett NotFound-resultat om ingen chatt hittas
+                                "Ingen chatt hittades med denna token");
                     }
 
                     return Results.Ok(new
                     {
-                        // Returnerar ett OK-resultat med chattinformation
-                        firstName = initialMessage.Sender, // Förnamn från det initiala meddelandet
-                        message = initialMessage.Message, // Meddelande från det initiala meddelandet
-                        formType = initialMessage.FormType, // Formulärtyp från det initiala meddelandet
-                        timestamp = initialMessage.Timestamp // Tidsstämpel från det initiala meddelandet
+                        firstName = initialMessage.Sender,
+                        message = initialMessage.Message,
+                        formType = initialMessage.FormType,
+                        timestamp = initialMessage.Timestamp
                     });
                 }
                 catch (Exception ex)
@@ -291,74 +344,74 @@ public class Program // Deklarerar huvudklassen Program
                     return Results.BadRequest(new
                     {
                         message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
         app.MapPost("/api/chat/message",
-            async (ChatMessage message, AppDbContext db) => // Mappar POST-begäran för att skicka ett chattmeddelande
+            async (ChatMessage message, AppDbContext db) =>
             {
                 try
                 {
-                    message.Timestamp = DateTime.UtcNow; // Sätter tidsstämpel för meddelandet till aktuell UTC-tid
-                    db.ChatMessages.Add(message); // Lägger till chattmeddelandet i databasen
-                    await db.SaveChangesAsync(); // Sparar ändringar i databasen asynkront
+                    message.Timestamp = DateTime.UtcNow;
+                    db.ChatMessages.Add(message);
+                    await db.SaveChangesAsync();
                     return Results.Ok(new
                     {
                         message = "Meddelande skickat", chatMessage = message
-                    }); // Returnerar ett OK-resultat med meddelande och skickat chattmeddelande
+                    });
                 }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(new
                     {
                         message = "Kunde inte skicka meddelande", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
         app.MapGet("/api/chat/messages/{chatToken}",
             async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattmeddelanden baserat på chat-token
+                AppDbContext db) =>
             {
                 try
                 {
-                    var messages = await db.ChatMessages // Hämtar chattmeddelanden baserat på chat-token
+                    var messages = await db.ChatMessages
                         .Where(m => m.ChatToken == chatToken)
-                        .OrderBy(m => m.Timestamp) // Sorterar meddelandena efter tidsstämpel
-                        .ToListAsync(); // Konverterar till en lista asynkront
+                        .OrderBy(m => m.Timestamp)
+                        .ToListAsync();
 
-                    return Results.Ok(messages); // Returnerar ett OK-resultat med chattmeddelandena
+                    return Results.Ok(messages);
                 }
                 catch (Exception ex)
                 {
                     return Results.BadRequest(new
                     {
                         message = "Kunde inte hämta meddelanden", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                    });
                 }
             });
 
         // Tickets endpoint
-        app.MapGet("/api/tickets", async (AppDbContext db) => // Mappar GET-begäran för att hämta ärenden
+        app.MapGet("/api/tickets", async (AppDbContext db) =>
         {
             try
             {
-                var tickets = await db.InitialFormMessages // Hämtar initiala formulärmeddelanden
-                    .OrderByDescending(f => f.Timestamp) // Sorterar ärendena efter tidsstämpel i fallande ordning
-                    .ToListAsync(); // Konverterar till en lista asynkront
+                var tickets = await db.InitialFormMessages
+                    .OrderByDescending(f => f.Timestamp)
+                    .ToListAsync();
 
-                return Results.Ok(tickets); // Returnerar ett OK-resultat med ärendena
+                return Results.Ok(tickets);
             }
             catch (Exception ex)
             {
                 return Results.BadRequest(new
                 {
                     message = "Kunde inte hämta ärenden", error = ex.Message
-                }); // Returnerar ett BadRequest-resultat vid fel
+                });
             }
         });
 
-        app.Run(); // Startar webbservern
+        app.Run();
     }
 }
