@@ -92,24 +92,33 @@ function Main() {
         };
     }, [fetchTickets]);
 
-    // Funktion för att uppdatera ärendelistan med ny data
     const updateTasks = (newTickets) => {
         setTasks(prevTasks => {
-            // Skapar en Map med existerande ärenden för snabb uppslagning
-            const existingTasks = new Map(prevTasks.map(task => [task.chatToken, task]));
-
-            // Kombinerar nya ärenden med existerande data
-            const updatedTasks = newTickets.map(ticket => ({
-                ...ticket,
-                ...existingTasks.get(ticket.chatToken)
-            }));
-
-            // Sorterar ärenden efter timestamp, nyaste först
-            return updatedTasks.sort((a, b) =>
-                new Date(b.timestamp) - new Date(a.timestamp)
-            );
+          // Create map of existing tasks for lookup
+          const existingTasks = new Map(prevTasks.map(task => [task.chatToken, task]));
+      
+          const updatedTasks = newTickets.map(ticket => {
+            // Preserve existing task data if available
+            const existingTask = existingTasks.get(ticket.chatToken);
+            
+            return {
+              ...ticket,
+              ...existingTask,
+              // Create a reliable displayTime field from various possible sources
+              displayTime: ticket.timestamp || ticket.submittedAt || ticket.createdAt || "Inget datum"
+            };
+          });
+      
+          // Sort by date, with error handling
+          return updatedTasks.sort((a, b) => {
+            const dateA = new Date(a.displayTime);
+            const dateB = new Date(b.displayTime);
+            return isNaN(dateA.getTime()) || isNaN(dateB.getTime()) 
+              ? 0 
+              : dateB - dateA;
+          });
         });
-    };
+      };
 
     // Funktion som körs när man börjar dra ett ärende
     const handleDragStart = (task) => {
@@ -143,19 +152,25 @@ function Main() {
         ));
     };
 
-    // Funktion för att formatera datum enligt svenskt format
     const formatDate = (dateString) => {
         if (!dateString) return "Inget datum";
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return "Ogiltigt datum";
-        return date.toLocaleString('sv-SE', {
+        
+        try {
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return "Ogiltigt datum";
+          
+          return date.toLocaleString('sv-SE', {
             year: 'numeric',
             month: 'numeric',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-        });
-    };
+          });
+        } catch (error) {
+          console.error("Error formatting date:", error);
+          return "Datum ej tillgängligt";
+        }
+      };
 
     // Funktion för att öppna chattmodalen
     const openChatModal = (token) => {
@@ -203,7 +218,9 @@ function Main() {
                         <div className="ticket-task-details">
                             <div className="ticket-wtp">{task.wtp}</div>
                             <div className="ticket-task-email">{task.email}</div>
-                            <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
+                            <div className="ticket-task-time">
+                                    {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
+                            </div>
                             <div className="ticket-task-token">
                                 
                                 <button
@@ -245,7 +262,9 @@ function Main() {
                         <div className="ticket-task-details">
                             <div className="ticket-wtp">{task.wtp}</div>
                             <div className="ticket-task-email">{task.email}</div>
-                            <div className="ticket-task-time">{formatDate(task.submittedAt)}</div>
+                            <div className="ticket-task-time">
+                                {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
+                            </div>
                             <div className="ticket-task-token">
                                
                                 <button
@@ -286,7 +305,9 @@ function Main() {
                         
                         <div className="ticket-task-details">
                             <div className="ticket-wtp">{task.wtp}</div>
-                            <div className="ticket-task-time">{formatDate(task.timestamp)}</div>
+                            <div className="ticket-task-time">
+                                {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
+                            </div>
                             <div className="ticket-task-token">
                                
                                 <button
