@@ -3,16 +3,18 @@ import EmojiPicker from "emoji-picker-react";
 
 // ChatModal tar token och onClose som props
 export default function ChatModal({ token, onClose }) {
-    const [open, setOpen] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [message, setMessage] = useState(""); 
     const [messages, setMessages] = useState([]);
     const [chatData, setChatData] = useState(null);
     const emojiPickerRef = useRef(null);
+    const emojiButtonRef = useRef(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const messagesEndRef = useRef(null);
     const intervalRef = useRef(null);
     const modalRef = useRef(null);
+    const inputContainerRef = useRef(null);
 
     // Combined fetch function
     const fetchData = async () => {
@@ -62,20 +64,60 @@ export default function ChatModal({ token, onClose }) {
         return () => clearInterval(intervalRef.current);
     }, [token]);
 
+    // Position emoji picker relative to emoji button
+    useEffect(() => {
+        if (showEmojiPicker && emojiPickerRef.current && emojiButtonRef.current && inputContainerRef.current) {
+            // Ensure picker is positioned properly relative to the button
+            const buttonRect = emojiButtonRef.current.getBoundingClientRect();
+            const containerRect = inputContainerRef.current.getBoundingClientRect();
+            
+            // Update picker position
+            const pickerElement = emojiPickerRef.current.querySelector('.EmojiPickerReact') || emojiPickerRef.current;
+            if (pickerElement) {
+                pickerElement.style.position = 'fixed';
+                pickerElement.style.bottom = `${window.innerHeight - containerRect.top + 10}px`;
+                pickerElement.style.left = `${buttonRect.left}px`;
+                pickerElement.style.width = '320px';
+                pickerElement.style.height = '400px';
+                pickerElement.style.zIndex = '2000';
+                pickerElement.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.3)';
+                pickerElement.style.borderRadius = '8px';
+            }
+        }
+    }, [showEmojiPicker]);
+
     // Debug state changes
     useEffect(() => {
         console.log('State updated:', {
             loading,
             hasChat: !!chatData,
             messageCount: messages.length,
-            error
+            error,
+            showEmojiPicker
         });
-    }, [loading, chatData, messages, error]);
+    }, [loading, chatData, messages, error, showEmojiPicker]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    // Close emoji picker when clicking outside of it
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showEmojiPicker && 
+                emojiPickerRef.current && 
+                !emojiPickerRef.current.contains(event.target) &&
+                emojiButtonRef.current && 
+                !emojiButtonRef.current.contains(event.target)) {
+                console.log('Clicking outside emoji picker, closing it');
+                setShowEmojiPicker(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showEmojiPicker]);
 
     // Close modal when clicking outside
     useEffect(() => {
@@ -152,8 +194,14 @@ export default function ChatModal({ token, onClose }) {
     };
     
     const handleEmojiClick = (emojiObject) => {
+        console.log("Emoji selected:", emojiObject);
         setMessage(prev => prev + emojiObject.emoji);
-        setOpen(false);
+        setShowEmojiPicker(false);
+    };
+
+    const toggleEmojiPicker = () => {
+        console.log("Toggling emoji picker. Current state:", showEmojiPicker);
+        setShowEmojiPicker(prev => !prev);
     };
 
     if (loading) {
@@ -177,7 +225,7 @@ export default function ChatModal({ token, onClose }) {
         );
     }
 
-    // Show error state (using original styling)
+    // Show error state
     if (error) {
         return (
             <div className="chat-modal" ref={modalRef}>
@@ -196,7 +244,7 @@ export default function ChatModal({ token, onClose }) {
         );
     }
 
-    // Show empty state if no chat data (using original styling)
+    // Show empty state if no chat data
     if (!chatData) {
         return (
             <div className="chat-modal" ref={modalRef}>
@@ -209,7 +257,7 @@ export default function ChatModal({ token, onClose }) {
         );
     }
 
-    // Main chat UI (using original styling)
+    // Main chat UI
     return (
         <div className="chat-modal" ref={modalRef}>
             <div className="chat-modal__container">
@@ -245,7 +293,7 @@ export default function ChatModal({ token, onClose }) {
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="chat-modal__input-container">
+                <div className="chat-modal__input-container" ref={inputContainerRef}>
                     <input 
                         type="text" 
                         className="chat-modal__input-field"
@@ -259,13 +307,24 @@ export default function ChatModal({ token, onClose }) {
                         }}
                     />
 
-                    <div className="chat-modal__emoji-trigger" onClick={() => setOpen(!open)}>
+                    <div 
+                        className="chat-modal__emoji-trigger" 
+                        onClick={toggleEmojiPicker}
+                        ref={emojiButtonRef}
+                    >
                         😃
                     </div>
 
-                    {open && (
-                        <div ref={emojiPickerRef} className="chat-modal__emoji-picker">
-                            <EmojiPicker onEmojiClick={handleEmojiClick} />
+                    {showEmojiPicker && (
+                        <div 
+                            className="chat-modal__emoji-picker" 
+                            ref={emojiPickerRef}
+                        >
+                            <EmojiPicker 
+                                onEmojiClick={handleEmojiClick}
+                                width="300px"
+                                height="350px"
+                            />
                         </div>
                     )}
 
