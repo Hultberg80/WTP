@@ -252,92 +252,175 @@ public class Program // Deklarerar huvudklassen Program
                 }
             });
 
-        // Chat endpoints
-        app.MapGet("/api/chat/{chatToken}",
-            async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattinformation baserat på chat-token
+        // Chat endpoints - FÖRBÄTTRADE ENDPOINTS MED BÄTTRE FELHANTERING
+        app.MapGet("/api/chat/{chatToken}", async (string chatToken, AppDbContext db) => 
+        {
+            if (string.IsNullOrEmpty(chatToken))
             {
-                if (string.IsNullOrEmpty(chatToken)) // Kontrollerar om chat-token är null eller tom
-                {
-                    return
-                        Results.BadRequest(
-                            "Ingen token angiven"); // Returnerar ett BadRequest-resultat om ingen token anges
-                }
+                return Results.BadRequest("Ingen token angiven");
+            }
 
-                try
-                {
-                    var initialMessage = await db
-                        .InitialFormMessages // Hämtar det initiala formulärmeddelandet baserat på chat-token
-                        .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
+            try
+            {
+                // First check the view
+                var initialMessage = await db.InitialFormMessages
+                    .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
 
-                    if (initialMessage == null) // Kontrollerar om inget initialt meddelande hittas
+                // If not found, check each form type directly as a fallback
+                if (initialMessage == null)
+                {
+                    // Check FordonForms
+                    var fordonForm = await db.FordonForms
+                        .FirstOrDefaultAsync(f => f.ChatToken == chatToken);
+                    
+                    if (fordonForm != null)
                     {
-                        return
-                            Results.NotFound(
-                                "Ingen chatt hittades med denna token"); // Returnerar ett NotFound-resultat om ingen chatt hittas
+                        return Results.Ok(new
+                        {
+                            firstName = fordonForm.FirstName,
+                            message = fordonForm.Message,
+                            formType = "Fordonsservice",
+                            timestamp = fordonForm.SubmittedAt
+                        });
                     }
 
-                    return Results.Ok(new
+                    // Check TeleForms
+                    var teleForm = await db.TeleForms
+                        .FirstOrDefaultAsync(f => f.ChatToken == chatToken);
+                    
+                    if (teleForm != null)
                     {
-                        // Returnerar ett OK-resultat med chattinformation
-                        firstName = initialMessage.Sender, // Förnamn från det initiala meddelandet
-                        message = initialMessage.Message, // Meddelande från det initiala meddelandet
-                        formType = initialMessage.FormType, // Formulärtyp från det initiala meddelandet
-                        timestamp = initialMessage.Timestamp // Tidsstämpel från det initiala meddelandet
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(new
-                    {
-                        message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
-                }
-            });
+                        return Results.Ok(new
+                        {
+                            firstName = teleForm.FirstName,
+                            message = teleForm.Message,
+                            formType = "Tele/Bredband",
+                            timestamp = teleForm.SubmittedAt
+                        });
+                    }
 
-        app.MapPost("/api/chat/message",
-            async (ChatMessage message, AppDbContext db) => // Mappar POST-begäran för att skicka ett chattmeddelande
+                    // Check ForsakringsForms
+                    var forsakringsForm = await db.ForsakringsForms
+                        .FirstOrDefaultAsync(f => f.ChatToken == chatToken);
+                    
+                    if (forsakringsForm != null)
+                    {
+                        return Results.Ok(new
+                        {
+                            firstName = forsakringsForm.FirstName,
+                            message = forsakringsForm.Message,
+                            formType = "Försäkringsärenden",
+                            timestamp = forsakringsForm.SubmittedAt
+                        });
+                    }
+
+                    // If still not found, return NotFound
+                    return Results.NotFound("Ingen chatt hittades med denna token");
+                }
+
+                return Results.Ok(new
+                {
+                    firstName = initialMessage.Sender,
+                    message = initialMessage.Message,
+                    formType = initialMessage.FormType,
+                    timestamp = initialMessage.Timestamp
+                });
+            }
+            catch (Exception ex)
             {
-                try
-                {
-                    message.Timestamp = DateTime.UtcNow; // Sätter tidsstämpel för meddelandet till aktuell UTC-tid
-                    db.ChatMessages.Add(message); // Lägger till chattmeddelandet i databasen
-                    await db.SaveChangesAsync(); // Sparar ändringar i databasen asynkront
-                    return Results.Ok(new
-                    {
-                        message = "Meddelande skickat", chatMessage = message
-                    }); // Returnerar ett OK-resultat med meddelande och skickat chattmeddelande
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(new
-                    {
-                        message = "Kunde inte skicka meddelande", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
-                }
-            });
+                // Log the exception for debugging
+                Console.WriteLine($"Error in /api/chat/{{chatToken}}: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                
+                return Results.Problem(
+                    title: "Ett fel uppstod vid hämtning av chat", 
+                    detail: ex.Message,
+                    statusCode: 500
+                );
+            }
+        });
 
-        app.MapGet("/api/chat/messages/{chatToken}",
-            async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattmeddelanden baserat på chat-token
+        app.MapGet("/api/chat/messages/{chatToken}", async (string chatToken, AppDbContext db) => 
+        {
+            if (string.IsNullOrEmpty(chatToken))
             {
-                try
-                {
-                    var messages = await db.ChatMessages // Hämtar chattmeddelanden baserat på chat-token
-                        .Where(m => m.ChatToken == chatToken)
-                        .OrderBy(m => m.Timestamp) // Sorterar meddelandena efter tidsstämpel
-                        .ToListAsync(); // Konverterar till en lista asynkront
+                return Results.BadRequest("Ingen token angiven");
+            }
 
-                    return Results.Ok(messages); // Returnerar ett OK-resultat med chattmeddelandena
-                }
-                catch (Exception ex)
+            try
+            {
+                var messages = await db.ChatMessages
+                    .Where(m => m.ChatToken == chatToken)
+                    .OrderBy(m => m.Timestamp)
+                    .ToListAsync();
+
+                // Check if this chat actually exists
+                if (!messages.Any())
                 {
-                    return Results.BadRequest(new
+                    // Check if chat exists in any form
+                    bool chatExists = await db.FordonForms.AnyAsync(f => f.ChatToken == chatToken) || 
+                                    await db.TeleForms.AnyAsync(f => f.ChatToken == chatToken) ||
+                                    await db.ForsakringsForms.AnyAsync(f => f.ChatToken == chatToken);
+
+                    if (!chatExists)
                     {
-                        message = "Kunde inte hämta meddelanden", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
+                        return Results.NotFound("Ingen chatt hittades med denna token");
+                    }
                 }
-            });
+
+                return Results.Ok(messages);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging
+                Console.WriteLine($"Error in /api/chat/messages/{{chatToken}}: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                
+                return Results.Problem(
+                    title: "Ett fel uppstod vid hämtning av meddelanden", 
+                    detail: ex.Message,
+                    statusCode: 500
+                );
+            }
+        });
+
+        app.MapPost("/api/chat/message", async (ChatMessage message, AppDbContext db) => 
+        {
+            if (string.IsNullOrEmpty(message.ChatToken) || string.IsNullOrEmpty(message.Message))
+            {
+                return Results.BadRequest("ChatToken och Message är obligatoriska fält");
+            }
+
+            try
+            {
+                // Verify chat exists before adding message
+                bool chatExists = await db.FordonForms.AnyAsync(f => f.ChatToken == message.ChatToken) || 
+                                await db.TeleForms.AnyAsync(f => f.ChatToken == message.ChatToken) ||
+                                await db.ForsakringsForms.AnyAsync(f => f.ChatToken == message.ChatToken);
+
+                if (!chatExists)
+                {
+                    return Results.NotFound("Ingen chatt hittades med denna token");
+                }
+
+                message.Timestamp = DateTime.UtcNow;
+                db.ChatMessages.Add(message);
+                await db.SaveChangesAsync();
+                return Results.Ok(new { message = "Meddelande skickat", chatMessage = message });
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging
+                Console.WriteLine($"Error in POST /api/chat/message: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                
+                return Results.Problem(
+                    title: "Kunde inte skicka meddelande", 
+                    detail: ex.Message,
+                    statusCode: 500
+                );
+            }
+        });
 
         // Tickets endpoint
         app.MapGet("/api/tickets", async (AppDbContext db) => // Mappar GET-begäran för att hämta ärenden
@@ -352,10 +435,67 @@ public class Program // Deklarerar huvudklassen Program
             }
             catch (Exception ex)
             {
-                return Results.BadRequest(new
-                {
-                    message = "Kunde inte hämta ärenden", error = ex.Message
-                }); // Returnerar ett BadRequest-resultat vid fel
+                // Log the exception for debugging
+                Console.WriteLine($"Error in /api/tickets: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                
+                // Try a fallback approach if the view fails
+                try {
+                    // Get data directly from individual tables
+                    var fordonForms = await db.FordonForms
+                        .Where(f => f.IsChatActive)
+                        .Select(f => new {
+                            ChatToken = f.ChatToken,
+                            Sender = f.FirstName,
+                            Message = f.Message,
+                            Timestamp = f.SubmittedAt,
+                            IssueType = f.IssueType,
+                            Email = f.Email,
+                            FormType = "Fordonsservice"
+                        })
+                        .ToListAsync();
+                        
+                    var teleForms = await db.TeleForms
+                        .Where(f => f.IsChatActive)
+                        .Select(f => new {
+                            ChatToken = f.ChatToken,
+                            Sender = f.FirstName,
+                            Message = f.Message,
+                            Timestamp = f.SubmittedAt,
+                            IssueType = f.IssueType,
+                            Email = f.Email,
+                            FormType = "Tele/Bredband"
+                        })
+                        .ToListAsync();
+                        
+                    var forsakringsForms = await db.ForsakringsForms
+                        .Where(f => f.IsChatActive)
+                        .Select(f => new {
+                            ChatToken = f.ChatToken,
+                            Sender = f.FirstName,
+                            Message = f.Message,
+                            Timestamp = f.SubmittedAt,
+                            IssueType = f.IssueType,
+                            Email = f.Email,
+                            FormType = "Försäkringsärenden"
+                        })
+                        .ToListAsync();
+                        
+                    // Combine and order results
+                    var allTickets = fordonForms.Concat(teleForms).Concat(forsakringsForms)
+                        .OrderByDescending(t => t.Timestamp)
+                        .ToList();
+                        
+                    return Results.Ok(allTickets);
+                }
+                catch (Exception fallbackEx) {
+                    Console.WriteLine($"Fallback also failed: {fallbackEx.Message}");
+                    return Results.Problem(
+                        title: "Kunde inte hämta ärenden", 
+                        detail: ex.Message,
+                        statusCode: 500
+                    );
+                }
             }
         });
 

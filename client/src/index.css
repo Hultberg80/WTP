@@ -971,8 +971,306 @@ nav a[href="chat"]:hover {
   }
 }
 
+/* Nya styles för loading, error och reconnecting states */
+.loading-container {
+  grid-column: 2 / span 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
 
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
 
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
+.error-container {
+  grid-column: 2 / span 3;
+  padding: 2rem;
+  background: #ffebee;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.error-container h2 {
+  color: #c62828;
+  margin-bottom: 1rem;
+}
+
+.refresh-button {
+  padding: 0.75rem 1.5rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+.refresh-button:hover {
+  background: #1976d2;
+}
+
+.status-bar {
+  background-color: #e3f2fd;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Styles för tomma states i kolumner */
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #9e9e9e;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+/* Förbättrade chattstyles */
+.chat-modal__message--error {
+  opacity: 0.7;
+}
+
+.chat-modal__retry-indicator {
+  margin-left: 5px;
+  font-size: 1.2em;
+  color: #ff5252;
+}
+
+/* Förbättrade chat modal styles */
+.chat-modal__error {
+  padding: 2rem;
+  text-align: center;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin: 2rem;
+}
+
+.chat-modal__error-button {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chat-modal__error-button:hover {
+  background-color: #d32f2f;
+}
+/* Nya styles för förbättrad felhantering */
+
+/* Spinner och laddningsindikator */
+.loading-container {
+  grid-column: 2 / span 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Felmeddelande-container för dashboard */
+.error-container {
+  grid-column: 2 / span 3;
+  padding: 2rem;
+  background: #fff0f0;
+  color: #d32f2f;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border: 1px solid #ffcdd2;
+}
+
+.error-container h2 {
+  color: #c62828;
+  margin-bottom: 1rem;
+}
+
+.error-container p {
+  margin-bottom: 0.5rem;
+}
+
+/* Uppdateringsknapp */
+.refresh-button {
+  padding: 0.75rem 1.5rem;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 1rem;
+}
+
+.refresh-button:hover {
+  background: #1976d2;
+}
+
+.refresh-button:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
+}
+
+/* Status-fält för dashboard */
+.status-bar {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.status-bar strong {
+  font-weight: 600;
+}
+
+/* Tom-tillstånd för kolumner */
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: #757575;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  margin: 1rem 0;
+  border: 1px dashed #ccc;
+}
+
+/* Stil för felaktiga chatmeddelanden */
+.chat-modal__message--error {
+  opacity: 0.7;
+  position: relative;
+}
+
+.chat-modal__message--error:hover {
+  opacity: 0.9;
+}
+
+.chat-modal__retry-indicator {
+  display: inline-block;
+  margin-left: 5px;
+  font-size: 1.2em;
+  color: #ff5252;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* Förbättrade felmeddelanden för chatt */
+.chat-modal__error {
+  padding: 2rem;
+  text-align: center;
+  background-color: #fff0f0;
+  border-radius: 8px;
+  margin: 2rem;
+  border: 1px solid #ffcdd2;
+  color: #d32f2f;
+}
+
+.chat-modal__error p {
+  margin-bottom: 0.5rem;
+}
+
+.chat-modal__error-button {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.chat-modal__error-button:hover {
+  background-color: #d32f2f;
+}
+
+/* Tom chattillstånd */
+.chat-modal__empty {
+  padding: 2rem;
+  text-align: center;
+  color: #757575;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin: 2rem;
+  border: 1px dashed #ccc;
+}
+
+/* Temporära meddelanden */
+.chat-modal__message:has(small:contains("Skickar...")) {
+  opacity: 0.8;
+}
+
+/* 
+ * Styles för att fixa drag-and-drop-problem i Safari
+ * Dessa hjälper till att göra drag/drop mer pålitligt
+ */
+.ticket-task-item {
+  -webkit-user-drag: element;
+  user-select: none;
+}
+
+/* 
+ * Förbättrad synlighet för drag-tillstånd
+ * Mer uppenbart vad som händer
+ */
+.ticket-task-item:active {
+  cursor: grabbing;
+  opacity: 0.7;
+  transform: scale(0.98);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
 
 

@@ -104,9 +104,6 @@ export default function Chat() {
         
         // Navigate back or to a specific route
         navigate('/'); // Navigate to home or another appropriate route
-        
-        // If you're using this in a modal context, you might want to call a parent function instead
-        // For example: props.onClose();
     };
 
     const handleSendMessage = async () => {
@@ -117,11 +114,11 @@ export default function Chat() {
         // Clear the input field immediately
         setMessage("");
         
+        // Use PascalCase property names to match the C# server model
         const messageToSend = {
-            chatToken: token,
-            sender: chatData.firstName,
-            message: currentMessage
-            // Don't set timestamp - let the server handle it
+            ChatToken: token,
+            Sender: chatData.firstName,
+            Message: currentMessage
         };
         
         // Add temporary message to UI (optional, for immediate feedback)
@@ -144,7 +141,9 @@ export default function Chat() {
             });
     
             if (!response.ok) {
-                throw new Error('Kunde inte skicka meddelande');
+                const errorText = await response.text();
+                console.error('Server response:', response.status, errorText);
+                throw new Error(`Kunde inte skicka meddelande: ${response.status}`);
             }
     
             // Get the response data which should include the saved message with ID
@@ -159,6 +158,7 @@ export default function Chat() {
             // Optionally revert temporary message if sending failed
         }
     };
+
     const handleEmojiClick = (emojiObject) => {
         setMessage(prev => prev + emojiObject.emoji);
         setOpen(false);
