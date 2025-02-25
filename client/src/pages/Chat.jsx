@@ -82,14 +82,18 @@ export default function Chat() {
     // Close modal when clicking outside (keeping this from original)
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (modalRef.current && !modalRef.current.contains(event.target)) {
-               // You can implement close functionality here if needed
+            if (
+                emojiPickerRef.current &&
+                !emojiPickerRef.current.contains(event.target) &&
+                !event.target.closest(".emoji")
+            ) {
+                setOpen(false);
             }
         };
 
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [open]);
 
     // Add a function to handle closing the chat
     const handleCloseChat = () => {
@@ -265,14 +269,12 @@ export default function Chat() {
                         }}
                     />
 
-                    <div className="chat-modal__emoji-trigger" onClick={() => setOpen(!open)}>
-                        😃
+                    <div className="emoji" onClick={() => setOpen(!open)}>😃
                     </div>
-
                     {open && (
-                        <div ref={emojiPickerRef} className="chat-modal__emoji-picker">
-                            <EmojiPicker onEmojiClick={handleEmojiClick} />
-                        </div>
+                    <div ref={emojiPickerRef} className="emojipicker">
+                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                    </div>
                     )}
 
                     <button 
