@@ -7,15 +7,16 @@ function Layout() {
       {/* Navigation Header */}
       <nav>
         <div>
-          <div>
-            {/* Logo/Brand */}
-            <h1>Customer</h1>
+          <div className="navbar-content">
+            {/* Logo/Brand on the left */}
+            <div className="navbar-left">
+              <h1 className="project-name">WPT</h1>
+            </div>
 
             {/* Main Navigation */}
-            <div>
+            <div className="navbar-center">
               {/* Public NavLinks */}
               <div>
-             
                 <NavLink 
                   to={"/dynamisk"}
                   className="hover:text-blue-300 transition-colors"
@@ -73,6 +74,13 @@ function Layout() {
               >
                 Chat
               </NavLink>
+            </div>
+
+            {/* Login icon on the right */}
+            <div className="navbar-right">
+              <a href="">
+                <img src="/img/login.png" alt="Logga in" className="login-img"/>
+              </a>
             </div>
           </div>
         </div>
