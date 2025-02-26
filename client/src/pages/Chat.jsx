@@ -35,7 +35,8 @@ export default function Chat() {
             abortControllerRef.current = controller;
             const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
-            const chatResponse = await fetch(`/api/chat/${token}`, { 
+            // Använd den kombinerade endpointen med metadata=true
+            const chatResponse = await fetch(`/api/chat/${token}?metadata=true`, { 
                 signal: controller.signal 
             });
             
@@ -71,8 +72,8 @@ export default function Chat() {
         if (!token) return false;
         
         try {
-            // Create URL with timestamp parameter
-            let url = `/api/chat/messages/${token}`;
+            // Använd den kombinerade endpointen utan metadata-parametern
+            let url = `/api/chat/${token}`;
             
             // Add properly formatted since parameter
             let sinceParam;
