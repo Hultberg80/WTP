@@ -2,8 +2,7 @@
 using server.Data; // Importerar server.Data för att få tillgång till AppDbContext
 using server.Services; // Importerar server.Services för att få tillgång till EmailService
 using server.Models; // Importerar server.Models för att få tillgång till datamodeller
-using System.Text.Json; // Importerar System.Text.Json för JSON-serialisering
-
+using Microsoft.AspNetCore.Mvc; // Importerar Microsoft.AspNetCore.Mvc för att använda MVC-funktioner
 namespace server; // Deklarerar namnrymden för serverprojektet
 
 public class Program // Deklarerar huvudklassen Program
@@ -253,48 +252,7 @@ public class Program // Deklarerar huvudklassen Program
             });
 
         // Chat endpoints
-        app.MapGet("/api/chat/{chatToken}",
-            async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattinformation baserat på chat-token
-            {
-                if (string.IsNullOrEmpty(chatToken)) // Kontrollerar om chat-token är null eller tom
-                {
-                    return
-                        Results.BadRequest(
-                            "Ingen token angiven"); // Returnerar ett BadRequest-resultat om ingen token anges
-                }
-
-                try
-                {
-                    var initialMessage = await db
-                        .InitialFormMessages // Hämtar det initiala formulärmeddelandet baserat på chat-token
-                        .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
-
-                    if (initialMessage == null) // Kontrollerar om inget initialt meddelande hittas
-                    {
-                        return
-                            Results.NotFound(
-                                "Ingen chatt hittades med denna token"); // Returnerar ett NotFound-resultat om ingen chatt hittas
-                    }
-
-                    return Results.Ok(new
-                    {
-                        // Returnerar ett OK-resultat med chattinformation
-                        firstName = initialMessage.Sender, // Förnamn från det initiala meddelandet
-                        message = initialMessage.Message, // Meddelande från det initiala meddelandet
-                        formType = initialMessage.FormType, // Formulärtyp från det initiala meddelandet
-                        timestamp = initialMessage.Timestamp // Tidsstämpel från det initiala meddelandet
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(new
-                    {
-                        message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
-                }
-            });
-
+  
         app.MapPost("/api/chat/message",
             async (ChatMessage message, AppDbContext db) => // Mappar POST-begäran för att skicka ett chattmeddelande
             {
@@ -316,29 +274,187 @@ public class Program // Deklarerar huvudklassen Program
                     }); // Returnerar ett BadRequest-resultat vid fel
                 }
             });
+// Long polling messages endpoint
 
-        app.MapGet("/api/chat/messages/{chatToken}",
-            async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattmeddelanden baserat på chat-token
+// Replace your current /api/chat/messages/{chatToken} endpoint with this improved version
+// Updated messages endpoint to handle initial vs long polling requests correctly
+app.MapGet("/api/chat/messages/{chatToken}", async (string chatToken, [FromQuery] string since, HttpContext context, AppDbContext db) => 
+{
+    Console.WriteLine($"Request received for chat messages: token={chatToken}, since={since ?? "null"}");
+    
+    if (string.IsNullOrEmpty(chatToken))
+    {
+        return Results.BadRequest("Ingen token angiven");
+    }
+
+    // Check if this is an initial request or long polling request
+    bool isLongPolling = context.Request.Headers.TryGetValue("X-Long-Polling", out var longPollingValue) && 
+                        longPollingValue == "true";
+                        
+    Console.WriteLine($"Request type: {(isLongPolling ? "Long polling" : "Initial request")}");
+    
+    // Parse the since parameter if provided
+    DateTime sinceTime = DateTime.MinValue;
+    if (!string.IsNullOrEmpty(since))
+    {
+        if (!DateTime.TryParse(since, out sinceTime))
+        {
+            Console.WriteLine($"Failed to parse date: {since}");
+            // If parsing fails, default to a very old date
+            sinceTime = DateTime.MinValue;
+        }
+    }
+
+    try
+    {
+        // First, check if the chat exists
+        var initialMessage = await db.InitialFormMessages
+            .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
+
+        if (initialMessage == null)
+        {
+            return Results.NotFound("Ingen chatt hittades med denna token");
+        }
+
+        // Function to get messages - encapsulated for reuse
+        async Task<List<object>> GetMessagesAsync()
+        {
+            var result = new List<object>();
+            
+            // Add initial message if it's newer than since time
+            if (initialMessage.Timestamp > sinceTime)
             {
-                try
+                result.Add(new
                 {
-                    var messages = await db.ChatMessages // Hämtar chattmeddelanden baserat på chat-token
-                        .Where(m => m.ChatToken == chatToken)
-                        .OrderBy(m => m.Timestamp) // Sorterar meddelandena efter tidsstämpel
-                        .ToListAsync(); // Konverterar till en lista asynkront
-
-                    return Results.Ok(messages); // Returnerar ett OK-resultat med chattmeddelandena
-                }
-                catch (Exception ex)
+                    chatToken = initialMessage.ChatToken,
+                    sender = initialMessage.Sender,
+                    message = initialMessage.Message,
+                    timestamp = initialMessage.Timestamp,
+                    isInitial = true
+                });
+            }
+            
+            // Get chat messages after the since time
+            var chatMessages = await db.ChatMessages
+                .Where(m => m.ChatToken == chatToken && m.Timestamp > sinceTime)
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+                
+            // Add chat messages to result
+            foreach (var msg in chatMessages)
+            {
+                result.Add(new
                 {
-                    return Results.BadRequest(new
-                    {
-                        message = "Kunde inte hämta meddelanden", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
-                }
-            });
+                    chatToken = msg.ChatToken,
+                    sender = msg.Sender,
+                    message = msg.Message,
+                    timestamp = msg.Timestamp,
+                    isInitial = false
+                });
+            }
+            
+            return result;
+        }
 
+        // INITIAL REQUEST HANDLING - respond immediately
+        if (!isLongPolling)
+        {
+            var messages = await GetMessagesAsync();
+            Console.WriteLine($"Initial request: Returning {messages.Count} messages immediately");
+            return Results.Ok(messages);
+        }
+        
+        // LONG POLLING HANDLING - wait for changes
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        
+        // First, check if there are any messages immediately available
+        var initialCheck = await GetMessagesAsync();
+        if (initialCheck.Count > 0)
+        {
+            Console.WriteLine($"Long polling: Found {initialCheck.Count} messages immediately");
+            return Results.Ok(initialCheck);
+        }
+        
+        // If no messages, poll until we have some or timeout
+        int pollCount = 0;
+        const int MaxPolls = 20;  // 20 polls x 1s = 20s max wait
+        
+        while (!cts.Token.IsCancellationRequested && pollCount < MaxPolls)
+        {
+            // Check if client disconnected
+            if (context.RequestAborted.IsCancellationRequested)
+            {
+                Console.WriteLine("Client disconnected");
+                return Results.NoContent();
+            }
+            
+            // Wait before checking again
+            await Task.Delay(1000, cts.Token);
+            pollCount++;
+            
+            // Check for new messages
+            var messages = await GetMessagesAsync();
+            if (messages.Count > 0)
+            {
+                Console.WriteLine($"Long polling: Found {messages.Count} messages after {pollCount} polls");
+                return Results.Ok(messages);
+            }
+        }
+        
+        // If we get here, return empty list after timeout
+        Console.WriteLine("Long polling: Timeout with no new messages");
+        return Results.Ok(new List<object>());
+    }
+    catch (OperationCanceledException)
+    {
+        Console.WriteLine("Long polling: Operation cancelled");
+        return Results.Ok(new List<object>());
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in messages endpoint: {ex.Message}");
+        return Results.BadRequest(new 
+        { 
+            message = "Kunde inte hämta meddelanden", 
+            error = ex.Message 
+        });
+    }
+});
+// Add this endpoint to fetch basic chat info
+app.MapGet("/api/chat/{chatToken}", async (string chatToken, AppDbContext db) =>
+{
+    if (string.IsNullOrEmpty(chatToken))
+    {
+        return Results.BadRequest("Ingen token angiven");
+    }
+
+    try
+    {
+        var initialMessage = await db.InitialFormMessages
+            .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
+
+        if (initialMessage == null)
+        {
+            return Results.NotFound("Ingen chatt hittades med denna token");
+        }
+
+        return Results.Ok(new
+        {
+            firstName = initialMessage.Sender,
+            message = initialMessage.Message,
+            formType = initialMessage.FormType,
+            timestamp = initialMessage.Timestamp
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Ett fel uppstod",
+            error = ex.Message
+        });
+    }
+});
         // Tickets endpoint
         app.MapGet("/api/tickets", async (AppDbContext db) => // Mappar GET-begäran för att hämta ärenden
         {
