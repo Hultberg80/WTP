@@ -252,49 +252,95 @@ public class Program // Deklarerar huvudklassen Program
                 }
             });
 
-        // Chat endpoints
-        app.MapGet("/api/chat/{chatToken}",
-            async (string chatToken,
-                AppDbContext db) => // Mappar GET-begäran för att hämta chattinformation baserat på chat-token
+        // Chat endpoints with long polling support
+       
+
+app.MapGet("/api/chat/messages/{chatToken}", async (string chatToken, HttpContext context, AppDbContext db) => 
+{
+    // Get the 'since' parameter which contains the timestamp of the last message
+    string sinceStr = context.Request.Query["since"];
+    DateTime? since = null;
+    
+    if (!string.IsNullOrEmpty(sinceStr))
+    {
+        if (DateTime.TryParse(sinceStr, out DateTime parsedDate))
+        {
+            since = parsedDate;
+        }
+    }
+    
+    try 
+    {
+        // Maximum wait time (30 seconds)
+        var maxWaitTime = TimeSpan.FromSeconds(30);
+        var waitStartTime = DateTime.UtcNow;
+        var longPollTimeout = waitStartTime + maxWaitTime;
+        
+        // Check if we need to do long polling (if 'since' is provided)
+        if (since.HasValue)
+        {
+            // Check for any newer messages
+            var initialMessages = await db.ChatMessages
+                .Where(m => m.ChatToken == chatToken && m.Timestamp > since.Value)
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+            
+            // If we already have newer messages, return them immediately
+            if (initialMessages.Any())
             {
-                if (string.IsNullOrEmpty(chatToken)) // Kontrollerar om chat-token är null eller tom
+                return Results.Ok(initialMessages);
+            }
+            
+            // Register a cancellation token to handle client disconnect
+            var cancellationToken = context.RequestAborted;
+            
+            // Enter polling loop
+            while (DateTime.UtcNow < longPollTimeout && !cancellationToken.IsCancellationRequested)
+            {
+                // Check for new messages
+                var newMessages = await db.ChatMessages
+                    .Where(m => m.ChatToken == chatToken && m.Timestamp > since.Value)
+                    .OrderBy(m => m.Timestamp)
+                    .ToListAsync(cancellationToken);
+                
+                // If we found new messages, return them immediately
+                if (newMessages.Any())
                 {
-                    return
-                        Results.BadRequest(
-                            "Ingen token angiven"); // Returnerar ett BadRequest-resultat om ingen token anges
+                    return Results.Ok(newMessages);
                 }
-
-                try
-                {
-                    var initialMessage = await db
-                        .InitialFormMessages // Hämtar det initiala formulärmeddelandet baserat på chat-token
-                        .FirstOrDefaultAsync(m => m.ChatToken == chatToken);
-
-                    if (initialMessage == null) // Kontrollerar om inget initialt meddelande hittas
-                    {
-                        return
-                            Results.NotFound(
-                                "Ingen chatt hittades med denna token"); // Returnerar ett NotFound-resultat om ingen chatt hittas
-                    }
-
-                    return Results.Ok(new
-                    {
-                        // Returnerar ett OK-resultat med chattinformation
-                        firstName = initialMessage.Sender, // Förnamn från det initiala meddelandet
-                        message = initialMessage.Message, // Meddelande från det initiala meddelandet
-                        formType = initialMessage.FormType, // Formulärtyp från det initiala meddelandet
-                        timestamp = initialMessage.Timestamp // Tidsstämpel från det initiala meddelandet
-                    });
-                }
-                catch (Exception ex)
-                {
-                    return Results.BadRequest(new
-                    {
-                        message = "Ett fel uppstod", error = ex.Message
-                    }); // Returnerar ett BadRequest-resultat vid fel
-                }
-            });
-
+                
+                // If no new messages, wait a bit before checking again
+                await Task.Delay(1000, cancellationToken);
+            }
+            
+            // If we timeout or get cancelled, return an empty array
+            return Results.Ok(Array.Empty<ChatMessage>());
+        }
+        else
+        {
+            // If no 'since' parameter is provided, return all messages (initial load)
+            var messages = await db.ChatMessages
+                .Where(m => m.ChatToken == chatToken)
+                .OrderBy(m => m.Timestamp)
+                .ToListAsync();
+                
+            return Results.Ok(messages);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        // Client disconnected, no need to send a response
+        return Results.Ok(Array.Empty<ChatMessage>());
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Kunde inte hämta meddelanden",
+            error = ex.Message
+        });
+    }
+});
         app.MapPost("/api/chat/message",
             async (ChatMessage message, AppDbContext db) => // Mappar POST-begäran för att skicka ett chattmeddelande
             {
@@ -339,25 +385,95 @@ public class Program // Deklarerar huvudklassen Program
                 }
             });
 
-        // Tickets endpoint
-        app.MapGet("/api/tickets", async (AppDbContext db) => // Mappar GET-begäran för att hämta ärenden
-        {
-            try
-            {
-                var tickets = await db.InitialFormMessages // Hämtar initiala formulärmeddelanden
-                    .OrderByDescending(f => f.Timestamp) // Sorterar ärendena efter tidsstämpel i fallande ordning
-                    .ToListAsync(); // Konverterar till en lista asynkront
 
-                return Results.Ok(tickets); // Returnerar ett OK-resultat med ärendena
-            }
-            catch (Exception ex)
+
+        // Tickets endpoint, with long polling support
+
+
+app.MapGet("/api/tickets", async (HttpContext context, AppDbContext db) => {
+    try
+    {
+        // Get the 'since' parameter which contains the timestamp of the last known ticket
+        string sinceStr = context.Request.Query["since"];
+        DateTime? since = null;
+        
+        if (!string.IsNullOrEmpty(sinceStr))
+        {
+            if (DateTime.TryParse(sinceStr, out DateTime parsedDate))
             {
-                return Results.BadRequest(new
-                {
-                    message = "Kunde inte hämta ärenden", error = ex.Message
-                }); // Returnerar ett BadRequest-resultat vid fel
+                since = parsedDate;
             }
+        }
+        
+        // Maximum wait time (20 seconds)
+        var maxWaitTime = TimeSpan.FromSeconds(20);
+        var waitStartTime = DateTime.UtcNow;
+        var longPollTimeout = waitStartTime + maxWaitTime;
+        
+        // Check if we need to do long polling (if 'since' is provided)
+        if (since.HasValue)
+        {
+            // Check for any newer tickets
+            var initialTickets = await db.InitialFormMessages
+                .Where(f => f.Timestamp > since.Value)
+                .OrderByDescending(f => f.Timestamp)
+                .ToListAsync();
+                
+            // If we already have newer tickets, return them immediately
+            if (initialTickets.Any())
+            {
+                return Results.Ok(initialTickets);
+            }
+            
+            // Register a cancellation token to handle client disconnect
+            var cancellationToken = context.RequestAborted;
+            
+            // Enter polling loop
+            while (DateTime.UtcNow < longPollTimeout && !cancellationToken.IsCancellationRequested)
+            {
+                // Check for new tickets
+                var newTickets = await db.InitialFormMessages
+                    .Where(f => f.Timestamp > since.Value)
+                    .OrderByDescending(f => f.Timestamp)
+                    .ToListAsync(cancellationToken);
+                    
+                // If we found new tickets, return them immediately
+                if (newTickets.Any())
+                {
+                    return Results.Ok(newTickets);
+                }
+                
+                // If no new tickets, wait a bit before checking again
+                await Task.Delay(1000, cancellationToken);
+            }
+            
+            // If we timeout or get cancelled, return an empty array
+            return Results.Ok(Array.Empty<InitialFormMessage>());
+        }
+        else
+        {
+            // If no 'since' parameter is provided, return all tickets (initial load)
+            var tickets = await db.InitialFormMessages
+                .OrderByDescending(f => f.Timestamp)
+                .ToListAsync();
+                
+            return Results.Ok(tickets);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        // Client disconnected, no need to send a response
+        return Results.Ok(Array.Empty<InitialFormMessage>());
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new
+        {
+            message = "Kunde inte hämta ärenden",
+            error = ex.Message
         });
+    }
+});
 
         app.Run(); // Startar webbservern
     }

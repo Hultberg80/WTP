@@ -970,8 +970,101 @@ nav a[href="chat"]:hover {
       opacity: 1;
   }
 }
+/* Connection error notification */
+.dashboard-connection-error {
+  grid-column: 1 / -1;
+  background-color: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
 
+.dashboard-connection-error p {
+  color: #b91c1c;
+  font-weight: 500;
+  margin: 0;
+}
 
+.dashboard-connection-error button {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dashboard-connection-error button:hover {
+  background-color: #b91c1c;
+}
+
+/* Animation for new tickets */
+@keyframes highlightNew {
+  0% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    transform: translateY(0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.7);
+    transform: translateY(-4px);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+    transform: translateY(0);
+  }
+}
+
+.ticket-task-item.new-item {
+  animation: highlightNew 1s ease-in-out;
+}
+/* Connection status message */
+.chat-connection-status {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background-color: rgba(252, 211, 77, 0.9); /* Amber/yellow color */
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  animation: fadeInDown 0.3s ease-out;
+}
+
+.chat-connection-status span {
+  font-size: 0.875rem;
+  color: #7c2d12; /* Dark amber/brown text */
+}
+
+/* Pending message styles */
+.chat-message--pending {
+  opacity: 0.7;
+}
+
+.chat-message--pending .chat-message-text {
+  border: 1px dashed rgba(14, 165, 233, 0.5);
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 
 
