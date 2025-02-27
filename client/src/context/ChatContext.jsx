@@ -29,42 +29,74 @@ export function ChatProvider({ children }) {
   const messagesEndRef = useRef(null);
   const emojiPickerRef = useRef(null);
 
-  // Fetch chat data based on token
+  // Fetch chat data based on token - improved with separate API calls and better error handling
   const fetchChatData = useCallback(async (token) => {
     if (!token) return;
     
     try {
-      setLoading(true);
-      
-      const [chatResponse, messagesResponse] = await Promise.all([
-        fetch(`/api/chat/${token}`),
-        fetch(`/api/chat/messages/${token}`)
-      ]);
-
-      if (!chatResponse.ok || !messagesResponse.ok) {
-        throw new Error('Kunde inte hämta chattdata');
+      // Only set loading on initial load
+      const isInitialLoad = !chatData;
+      if (isInitialLoad) {
+        setLoading(true);
       }
-
-      const [chatInfo, chatMessages] = await Promise.all([
-        chatResponse.json(),
-        messagesResponse.json()
-      ]);
       
-      setChatData(chatInfo);
-      setMessages(chatMessages);
-      setError(null);
+      // Split the fetches to handle errors individually
+      console.log('Fetching chat data for token:', token);
+      
+      // Get chat info first
+      const chatResponse = await fetch(`/api/chat/${token}`);
+      if (!chatResponse.ok) {
+        throw new Error(`Failed to fetch chat info: ${chatResponse.status}`);
+      }
+      
+      const chatInfo = await chatResponse.json();
+      console.log('Chat info received:', chatInfo);
+      
+      // Only update chat data if we got valid info
+      if (chatInfo) {
+        setChatData(chatInfo);
+      }
+      
+      // Now get messages
+      const messagesResponse = await fetch(`/api/chat/messages/${token}`);
+      if (!messagesResponse.ok) {
+        // Don't throw here - we want to preserve chat data even if messages fail
+        console.error(`Failed to fetch messages: ${messagesResponse.status}`);
+        setError('Kunde inte uppdatera meddelanden. Försök igen senare.');
+        return;
+      }
+      
+      const chatMessages = await messagesResponse.json();
+      console.log('Messages received:', chatMessages.length);
+      
+      // Only update messages if we got a valid array
+      if (chatMessages && Array.isArray(chatMessages)) {
+        setMessages(chatMessages);
+        // Clear any existing error if messages were successfully loaded
+        setError(null);
+      }
     } catch (err) {
       console.error('Error fetching chat data:', err);
       setError(err.message);
+      
+      // Don't clear existing data on error
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [chatData]);
 
   // Initialize chat with token
   const initializeChat = useCallback((token) => {
     console.log('Initializing chat with token:', token);
     setCurrentToken(token);
+    
+    // Reset state for new chat
+    if (currentToken !== token) {
+      setChatData(null);
+      setMessages([]);
+      setError(null);
+      setLoading(true);
+    }
     
     // Clear previous interval if exists
     if (intervalRef.current) {
@@ -75,14 +107,17 @@ export function ChatProvider({ children }) {
     fetchChatData(token);
     
     // Set up polling
-    intervalRef.current = setInterval(() => fetchChatData(token), 5000);
+    intervalRef.current = setInterval(() => {
+      console.log('Polling for new messages...');
+      fetchChatData(token);
+    }, 5000);
     
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [fetchChatData]);
+  }, [fetchChatData, currentToken]);
 
   // Clean up interval on unmount
   useEffect(() => {
@@ -109,7 +144,7 @@ export function ChatProvider({ children }) {
     setEmojiPickerOpen(false);
   };
 
-  // Send message
+  // Send message - improved with better error handling
   const sendMessage = async () => {
     if (message.trim() === "" || !chatData || !currentToken) return;
     
@@ -133,6 +168,7 @@ export function ChatProvider({ children }) {
     setMessages(prev => [...prev, tempMessage]);
   
     try {
+      console.log('Sending message:', messageToSend);
       const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: {
@@ -145,13 +181,28 @@ export function ChatProvider({ children }) {
         throw new Error('Kunde inte skicka meddelande');
       }
   
+      // Get response data to confirm message was sent
+      const result = await response.json();
+      console.log('Message sent successfully:', result);
+      
       // Refresh messages
       await fetchChatData(currentToken);
     } catch (error) {
       console.error('Error sending message:', error);
+      // Show error but don't clear messages
       setError("Kunde inte skicka meddelande. Försök igen.");
     }
   };
+
+  // Debug logging effect for state changes
+  useEffect(() => {
+    console.log('Chat context state updated:', {
+      hasData: !!chatData,
+      messageCount: messages.length,
+      error,
+      loading
+    });
+  }, [chatData, messages, error, loading]);
 
   return (
     <ChatContext.Provider

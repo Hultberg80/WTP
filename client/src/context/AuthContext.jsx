@@ -1,4 +1,4 @@
-// client/src/context/AuthContext.jsx
+
 import { createContext, useContext, useReducer, useEffect } from 'react';
 
 // DEVELOPMENT MODE FLAG - Set to false when login is implemented

@@ -26,6 +26,7 @@ export default function Chat() {
 
   // Initialize chat when component mounts or token changes
   useEffect(() => {
+    console.log('Chat component mounted with token:', token);
     if (token) {
       const cleanup = initializeChat(token);
       return cleanup;
@@ -44,8 +45,8 @@ export default function Chat() {
     }
   };
 
-  // Show loading skeleton
-  if (loading) {
+  // Show loading skeleton only for initial load
+  if (loading && !chatData) {
     return (
       <div className="chat-modal">
         <div className="chat-modal__container">
@@ -67,8 +68,8 @@ export default function Chat() {
     );
   }
 
-  // Show error state
-  if (error) {
+  // Show error state only if we have no data at all
+  if (error && !chatData) {
     return (
       <div className="chat-modal">
         <div className="chat-modal__container">
@@ -117,21 +118,46 @@ export default function Chat() {
         </div>
         
         <div className="chat-modal__messages">
-          {messages.map((msg) => (
-            <div 
-              key={msg.id}
-              className={`chat-modal__message ${
-                msg.sender === chatData.firstName 
-                  ? 'chat-modal__message--sent' 
-                  : 'chat-modal__message--received'
-              }`}
-            >
-              <p className="chat-modal__message-text">{msg.message}</p>
-              <small className="chat-modal__message-timestamp">
-                {new Date(msg.timestamp).toLocaleString()}
-              </small>
+          {/* Show error message if there is one but we still have chat data */}
+          {error && (
+            <div className="chat-modal__message" style={{margin: '0 auto', maxWidth: '80%'}}>
+              <p className="chat-modal__message-text" style={{background: '#fee2e2', color: '#dc2626'}}>
+                {error}
+              </p>
             </div>
-          ))}
+          )}
+        
+          {messages.length === 0 ? (
+            <div className="chat-modal__message chat-modal__message--received">
+              <p className="chat-modal__message-text">
+                Välkommen till chatten! Hur kan vi hjälpa dig idag?
+              </p>
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <div 
+                key={msg.id || `${msg.sender}-${msg.timestamp}`}
+                className={`chat-modal__message ${
+                  msg.sender === chatData.firstName 
+                    ? 'chat-modal__message--sent' 
+                    : 'chat-modal__message--received'
+                }`}
+              >
+                <p className="chat-modal__message-text">{msg.message}</p>
+                <small className="chat-modal__message-timestamp">
+                  {new Date(msg.timestamp).toLocaleString()}
+                </small>
+              </div>
+            ))
+          )}
+          
+          {/* Show loading indicator for refreshes */}
+          {loading && chatData && (
+            <div className="chat-modal__message" style={{textAlign: 'center', background: 'transparent'}}>
+              <p style={{fontSize: '0.8rem', color: '#888'}}>Uppdaterar...</p>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
 
