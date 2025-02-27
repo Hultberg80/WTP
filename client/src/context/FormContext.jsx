@@ -1,6 +1,6 @@
 // Form data and submissions context
 
-import { createContext, useContext, useReducer } from 'react';
+import { createContext, useContext, useReducer, useState, useEffect } from 'react';
 
 // Initial state
 const initialState = {
@@ -15,7 +15,8 @@ const initialState = {
     insuranceType: ''
   },
   message: { text: '', isError: false },
-  isSubmitting: false
+  isSubmitting: false,
+  isSubmitted: false // Ny flagga för att spåra när formuläret har skickats
 };
 
 // Create context
@@ -27,7 +28,8 @@ const ACTIONS = {
   UPDATE_FORM_DATA: 'UPDATE_FORM_DATA',
   RESET_FORM: 'RESET_FORM',
   SET_MESSAGE: 'SET_MESSAGE',
-  SET_SUBMITTING: 'SET_SUBMITTING'
+  SET_SUBMITTING: 'SET_SUBMITTING',
+  SET_SUBMITTED: 'SET_SUBMITTED' // Ny action för lyckad inskickning
 };
 
 // Reducer function
@@ -47,8 +49,10 @@ function formReducer(state, action) {
         }
       };
     case ACTIONS.RESET_FORM:
+      // Bevara meddelandet när formuläret återställs om det just har skickats
       return {
-        ...initialState
+        ...initialState,
+        message: state.isSubmitted ? state.message : initialState.message
       };
     case ACTIONS.SET_MESSAGE:
       return {
@@ -60,6 +64,11 @@ function formReducer(state, action) {
         ...state,
         isSubmitting: action.payload
       };
+    case ACTIONS.SET_SUBMITTED:
+      return {
+        ...state,
+        isSubmitted: action.payload
+      };
     default:
       return state;
   }
@@ -68,6 +77,25 @@ function formReducer(state, action) {
 // Provider component
 export function FormProvider({ children }) {
   const [state, dispatch] = useReducer(formReducer, initialState);
+
+  // Återställ isSubmitted efter att meddelandet har visats en stund
+  useEffect(() => {
+    let timeoutId;
+    
+    if (state.isSubmitted) {
+      // Återställ isSubmitted efter 5 sekunder (du kan justera tiden)
+      timeoutId = setTimeout(() => {
+        dispatch({
+          type: ACTIONS.SET_SUBMITTED,
+          payload: false
+        });
+      }, 5000);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [state.isSubmitted]);
 
   const setCompanyType = (type) => {
     dispatch({
@@ -88,6 +116,7 @@ export function FormProvider({ children }) {
   };
 
   const setMessage = (message, isError = false) => {
+    console.log("Sätter meddelande:", message, "isError:", isError);
     dispatch({
       type: ACTIONS.SET_MESSAGE,
       payload: { text: message, isError }
@@ -152,6 +181,8 @@ export function FormProvider({ children }) {
     }
 
     try {
+      console.log("Skickar formulärdata till:", endpoint);
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -160,13 +191,40 @@ export function FormProvider({ children }) {
         body: JSON.stringify(submitData)
       });
 
+      console.log("Serverns svar:", response.status, response.statusText);
+
       if (response.ok) {
         const result = await response.json();
+        console.log("Formulär skickat framgångsrikt:", result);
+        
+        // VIKTIGT: Sätt isSubmitted till true för att indikera att formuläret har skickats
+        dispatch({
+          type: ACTIONS.SET_SUBMITTED,
+          payload: true
+        });
+        
+        // Visa bekräftelsemeddelande
         setMessage('Formuläret har skickats! Kolla din e-post för chattlänken.', false);
-        resetForm();
+        
+        // Vänta med att återställa formuläret så att meddelandet hinner visas
+        setTimeout(() => {
+          resetForm();
+        }, 500);
+        
         return true;
       } else {
-        setMessage('Ett fel uppstod vid skickandet av formuläret', true);
+        let errorMessage = 'Ett fel uppstod vid skickandet av formuläret';
+        
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          console.error("Kunde inte läsa felmeddelande från servern");
+        }
+        
+        setMessage(errorMessage, true);
         return false;
       }
     } catch (error) {
