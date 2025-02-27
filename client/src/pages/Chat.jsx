@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import EmojiPicker from "emoji-picker-react";
-import { useChat } from '../context';
+import { GlobalProvider, useChat } from '../context';
 
 export default function Chat() {
   const { token } = useParams();
@@ -22,7 +22,7 @@ export default function Chat() {
     toggleEmojiPicker,
     handleEmojiClick,
     sendMessage
-  } = useChat();
+  } = useChat(GlobalProvider);
 
   // Initialize chat when component mounts or token changes
   useEffect(() => {

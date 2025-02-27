@@ -2,7 +2,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Aside from "./Aside";
-import { useTickets, useAuth } from "../../context";
+import { useTickets, useAuth, GlobalProvider } from "../../context";
+
 
 function Main() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ function Main() {
     moveTicket,
     updateTicket,
     formatDate
-  } = useTickets();
+  } = useTickets(GlobalProvider);
 
   // Skip authentication check in dev mode
   useEffect(() => {

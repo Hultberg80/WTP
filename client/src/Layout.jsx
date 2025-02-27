@@ -1,7 +1,32 @@
-// Layout.jsx
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom'; // Ta bort useNavigate eftersom det inte används
+import { useEffect } from 'react'; // Ta bort useState eftersom det inte används
+import { useChat, useForm, useTickets } from './context';
 
 function Layout() {
+  // Ta bort navigate eftersom det inte används
+  const { unreadMessages, fetchChatData } = useChat();
+  const { pendingForms, fetchPendingForms } = useForm();
+  const { pendingTickets, fetchTickets } = useTickets();
+  // Ställ in automatisk uppdatering av data
+  useEffect(() => {
+    // Hämta data direkt när komponenten laddas
+    console.log('Initial data fetch');
+    fetchChatData && fetchChatData();
+    fetchPendingForms && fetchPendingForms();
+    fetchTickets && fetchTickets();
+
+    // Sätt upp intervall för automatisk uppdatering
+    const intervalId = setInterval(() => {
+      console.log('Auto-refreshing data...');
+      fetchChatData && fetchChatData();
+      fetchPendingForms && fetchPendingForms();
+      fetchTickets && fetchTickets();
+    }, 10000); // Uppdatera varje 10 sekund
+
+    // Rensa intervall när komponenten avmonteras
+    return () => clearInterval(intervalId);
+  }, [fetchChatData, fetchPendingForms, fetchTickets]);
+
   return (
     <div>
       {/* Navigation Header */}
@@ -15,7 +40,6 @@ function Layout() {
             <div>
               {/* Public NavLinks */}
               <div>
-             
                 <NavLink 
                   to={"/dynamisk"}
                   className="hover:text-blue-300 transition-colors"
@@ -43,6 +67,9 @@ function Layout() {
                   to={"/admin/dashboard"} 
                 >
                   Dashboard
+                  {pendingTickets > 0 && (
+                    <span className="notification-badge">{pendingTickets}</span>
+                  )}
                 </NavLink>
 
                 <NavLink 
@@ -64,14 +91,20 @@ function Layout() {
                   to={"/staff/dashboard"}
                 >
                   Dashboard
+                  {pendingForms > 0 && (
+                    <span className="notification-badge">{pendingForms}</span>
+                  )}
                 </NavLink>
               </div>
 
-              {/* Chat */}
+              {/* Chat med notifikation för olästa meddelanden */}
               <NavLink 
                 to={"chat"}
               >
                 Chat
+                {unreadMessages > 0 && (
+                  <span className="notification-badge">{unreadMessages}</span>
+                )}
               </NavLink>
             </div>
           </div>
@@ -86,11 +119,10 @@ function Layout() {
       {/* Footer */}
       <footer>
         <div>
-          <p>&copy; { new Date().getFullYear()} All rights reversed</p>
+          <p>&copy; {new Date().getFullYear()} All rights reserved</p>
         </div>
       </footer>
     </div>
   );
 }
-
 export default Layout;
