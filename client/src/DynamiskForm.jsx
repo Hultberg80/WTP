@@ -1,110 +1,20 @@
-import { useState } from 'react';
+// client/src/DynamiskForm.jsx
+import { useForm } from './context';
 
 function DynamiskForm() {
-  const [companyType, setCompanyType] = useState('');
-  const [message, setMessage] = useState({ text: '', isError: false });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    firstName: '',
-    email: '',
-    serviceType: '',
-    issueType: '',
-    message: '',
-    registrationNumber: '',
-    insuranceType: ''
-  });
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const {
+    companyType,
+    formData,
+    message,
+    isSubmitting,
+    setCompanyType,
+    handleInputChange,
+    submitForm
+  } = useForm();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage({ text: '', isError: false });
-    setIsSubmitting(true);
-    
-    let endpoint = '';
-    let submitData = {
-      firstName: formData.firstName,
-      email: formData.email,
-      companyType: companyType,
-      message: formData.message,
-      isChatActive: true,
-      submittedAt: new Date().toISOString()
-    };
-
-    switch (companyType) {
-      case 'Tele/Bredband':
-        endpoint = '/api/tele';
-        submitData = {
-          ...submitData,
-          serviceType: formData.serviceType,
-          issueType: formData.issueType,
-        };
-        break;
-      case 'Fordonsservice':
-        endpoint = '/api/fordon';
-        submitData = {
-          ...submitData,
-          registrationNumber: formData.registrationNumber,
-          issueType: formData.issueType,
-        };
-        break;
-      case 'Försäkringsärenden':
-        endpoint = '/api/forsakring';
-        submitData = {
-          ...submitData,
-          insuranceType: formData.insuranceType,
-          issueType: formData.issueType,
-        };
-        break;
-      default:
-        setMessage({ text: 'Välj ett område', isError: true });
-        setIsSubmitting(false);
-        return;
-    }
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setMessage({ 
-          text: 'Formuläret har skickats! Kolla din e-post för chattlänken.', 
-          isError: false 
-        });
-        setFormData({
-          firstName: '',
-          email: '',
-          serviceType: '',
-          issueType: '',
-          message: '',
-          registrationNumber: '',
-          insuranceType: ''
-        });
-        setCompanyType('');
-      } else {
-        setMessage({ text: 'Ett fel uppstod vid skickandet av formuläret', isError: true });
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      setMessage({ 
-        text: 'Ett fel uppstod. Vänligen försök igen eller kontakta oss via telefon.', 
-        isError: true 
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    await submitForm();
   };
 
   const renderTelecomFields = () => (

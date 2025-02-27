@@ -1,4 +1,7 @@
-import { useState } from 'react';
+// client/src/pages/AdminCreateUser.jsx
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context';
 
 function AdminCreateUser() {
   const [formData, setFormData] = useState({
@@ -9,6 +12,15 @@ function AdminCreateUser() {
   });
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isAuthenticated, role, createUser, DEV_MODE } = useAuth();
+  const navigate = useNavigate();
+
+  // Skip auth check in dev mode
+  useEffect(() => {
+    if (!DEV_MODE && (!isAuthenticated || role !== 'admin')) {
+      navigate('/admin/login');
+    }
+  }, [isAuthenticated, role, navigate, DEV_MODE]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -16,29 +28,17 @@ function AdminCreateUser() {
     setMessage('');
 
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+      await createUser(formData);
+      setMessage('Användare skapades framgångsrikt!');
+      setFormData({
+        firstName: '',
+        password: '',
+        company: '',
+        role: '',
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        setMessage('Användare skapades framgångsrikt!');
-        setFormData({
-          firstName: '',
-          password: '',
-          company: '',
-          role: '',
-        });
-      } else {
-        setMessage('Ett fel uppstod när användaren skulle skapas.');
-      }
     } catch (error) {
       console.error('Error:', error);
-      setMessage('Ett fel uppstod vid anslutning till servern.');
+      setMessage('Ett fel uppstod när användaren skulle skapas.');
     } finally {
       setIsSubmitting(false);
     }
@@ -51,6 +51,11 @@ function AdminCreateUser() {
       [name]: value
     }));
   };
+
+  // Skip auth check in dev mode
+  if (!DEV_MODE && (!isAuthenticated || role !== 'admin')) {
+    return null; // Or a loading spinner while redirecting
+  }
 
   return (
     <div className="login-border">
@@ -118,6 +123,14 @@ function AdminCreateUser() {
             {isSubmitting ? 'Skapar användare...' : 'Skapa användare'}
           </button>
         </div>
+        
+        {DEV_MODE && (
+          <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 rounded">
+            <p className="text-yellow-800">
+              <strong>Dev-läge aktivt:</strong> Användare kommer bara att skapas i konsolen.
+            </p>
+          </div>
+        )}
       </form>
     </div>
   );
