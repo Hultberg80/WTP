@@ -11,33 +11,20 @@ function UserAndTicketPage() {
 
   const fetchUsers = async () => {
     try {
-      console.log("Hämtar användare...");
-      const res = await fetch("http://localhost:3001/api/users");
-      if (!res.ok) throw new Error(`Fel: ${res.status} ${res.statusText}`);
-      const data = await res.json();
-      console.log("Användardata:", data);
-    } catch (error) {
-      console.error("Fel vid hämtning av användare:", error);
-    }
-  };
-
-  // Funktion för att hämta alla ärenden
-  const fetchTickets = async () => {
-    try {
       setLoading(true);
       
-      const response = await fetch("/api/tickets");
+      const response = await fetch("/api/users");
       
       if (!response.ok) {
-        throw new Error('Något gick fel vid hämtning av ärenden');
+        throw new Error('Något gick fel vid hämtning av användardata');
       }
       
       const data = await response.json();
-      setTickets(data);
+      setUsers(data);
       setError(null);
     } catch (err) {
       setError(err.message);
-      console.error('Fel vid hämtning av ärenden:', err);
+      console.error('Fel vid hämtning av användare:', err);
     } finally {
       setLoading(false);
     }
@@ -134,11 +121,10 @@ function UserAndTicketPage() {
     : tickets;
 
   
-  // I AdminDashboard.jsx
-useEffect(() => {
-  fetchUsers(); // Om det finns en sådan funktion
-  fetchTickets(); // Om AdminDashboard använder tickets
-}, []);
+    useEffect(() => {
+      fetchUsers();
+      // Lägg också till fetchTickets() om den används i AdminDashboard
+    }, []);
   
   return (
     <div className="page-container">
