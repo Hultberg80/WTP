@@ -9,6 +9,7 @@ function UserAndTicketPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [viewMode, setViewMode] = useState('users'); // 'users' or 'tickets'
 
+  // Funktion för att hämta alla användare
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -25,6 +26,28 @@ function UserAndTicketPage() {
     } catch (err) {
       setError(err.message);
       console.error('Fel vid hämtning av användare:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funktion för att hämta alla ärenden
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch("/api/tickets");
+      
+      if (!response.ok) {
+        throw new Error('Något gick fel vid hämtning av ärenden');
+      }
+      
+      const data = await response.json();
+      setTickets(data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+      console.error('Fel vid hämtning av ärenden:', err);
     } finally {
       setLoading(false);
     }
@@ -120,12 +143,6 @@ function UserAndTicketPage() {
     ? tickets.filter(ticket => ticket.company === selectedCompany) 
     : tickets;
 
-  
-    useEffect(() => {
-      fetchUsers();
-      // Lägg också till fetchTickets() om den används i AdminDashboard
-    }, []);
-  
   return (
     <div className="page-container">
       <div className="view-toggle">
