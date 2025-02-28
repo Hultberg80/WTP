@@ -8,6 +8,7 @@ using Azure.Core;
 using Npgsql;
 using server.Records; // Importerar System.Text.Json för JSON-serialisering
 
+
 namespace server;
 // Deklarerar namnrymden för serverprojektet
 
@@ -79,7 +80,7 @@ public class Program // Deklarerar huvudklassen Program
             return Results.Ok(user);
         }
 
-        static async Task<IResult> Login(HttpContext context, LoginRequest loginRequest, NpgsqlDataSource db)
+        static async Task<IResult> Login(HttpContext context, LoginRequest loginRequest, AppDbContext db)
         {
             if (context.Session.GetString("User") != null)
             {
@@ -88,30 +89,27 @@ public class Program // Deklarerar huvudklassen Program
 
             Console.WriteLine("SetSession is called..Setting session");
 
-            await using var cmd = db.CreateCommand("SELECT * From Users WHERE FirstName = @FirstName AND Password = @Password");
-            cmd.Parameters.AddWithValue("@firstname", loginRequest.Firstname);
-            cmd.Parameters.AddWithValue("@password", loginRequest.Password);
-
-            await using (var reader = await cmd.ExecuteReaderAsync())
-            {
-                if (reader.HasRows)
+            // Hämta användaren från databasen
+            var user = await db.Users
+                .Where(u => u.FirstName == loginRequest.Firstname && u.Password == loginRequest.Password)
+                .Select(u => new User
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        User user = new User(
-                            reader.GetInt32(reader.GetOrdinal("id")),
-                            reader.GetString(reader.GetOrdinal("firstname")),
-                            reader.GetString(reader.GetOrdinal("role")),
-                            reader.GetString(reader.GetOrdinal("company"))
-                        );
-                        await Task.Run(() => context.Session.SetString("User", JsonSerializer.Serialize(user)));
-                        return Results.Ok(new { firstname = user.FirstName });
-                    }
-                }
+                    Id = u.Id,
+                    FirstName = u.FirstName,
+                    Role = u.Role,
+                    Company = u.Company
+                })
+                .FirstOrDefaultAsync();
+
+            if (user != null)
+            {
+                context.Session.SetString("User", JsonSerializer.Serialize(user));
+                return Results.Ok(new { firstname = user.FirstName });
             }
 
             return Results.NotFound(new { message = "No user found." });
         }
+
 
         static async Task<IResult> Logout(HttpContext context)
         {

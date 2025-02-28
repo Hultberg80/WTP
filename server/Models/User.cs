@@ -7,14 +7,16 @@ public class User
     public int Id { get; set; }
     public string FirstName { get; set; }
     [JsonConverter(typeof(JsonStringEnumConverter))] 
-    public string Role_id { get; set; }
+    public int RoleId { get; set; }
     public string Company  { get; set; }
+    
+    public User() { }
 
-    public User(int id, string firstname, string role_id, string company)
+    public User(int id, string firstname, int roleId, string company)
     {
         Id = id;
         FirstName = firstname;
-        Role_id = role_id;
+        RoleId = roleId;
         Company = company;
     }
 }
