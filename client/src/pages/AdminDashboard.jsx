@@ -9,25 +9,15 @@ function UserAndTicketPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [viewMode, setViewMode] = useState('users'); // 'users' or 'tickets'
 
-  // Funktion för att hämta alla användare
   const fetchUsers = async () => {
     try {
-      setLoading(true);
-      
-      const response = await fetch("/api/users");
-      
-      if (!response.ok) {
-        throw new Error('Något gick fel vid hämtning av användardata');
-      }
-      
-      const data = await response.json();
-      setUsers(data);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-      console.error('Fel vid hämtning av användare:', err);
-    } finally {
-      setLoading(false);
+      console.log("Hämtar användare...");
+      const res = await fetch("http://localhost:3001/api/users");
+      if (!res.ok) throw new Error(`Fel: ${res.status} ${res.statusText}`);
+      const data = await res.json();
+      console.log("Användardata:", data);
+    } catch (error) {
+      console.error("Fel vid hämtning av användare:", error);
     }
   };
 

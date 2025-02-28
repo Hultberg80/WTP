@@ -19,10 +19,21 @@ function Main() {
     updateTicket,
     formatDate
   } = useTickets();
-
-  // Endast denna minimala useEffect, inget annat
+    
   useEffect(() => {
-    fetchTickets();
+    const fetchData = async () => {
+      console.log("Hämtar tickets...");
+      await fetchTickets();
+      console.log("Tickets efter fetch:", tickets); // 🔹 Kolla vad som händer
+    };
+  
+    fetchData(); // 🔹 Ladda direkt
+  
+    const interval = setInterval(() => {
+      fetchTickets();
+    }, 5000);
+  
+    return () => clearInterval(interval);
   }, []);
 
   // Handle drag start
