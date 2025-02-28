@@ -73,6 +73,53 @@ public class Program // Deklarerar huvudklassen Program
                     }); // Returnerar ett BadRequest-resultat vid fel
                 }
             });
+        app.MapDelete("/api/users/{id}",
+            async (int id, AppDbContext db) =>
+            {
+                try
+                {
+                    var user = await db.Users.FindAsync(id);
+                    if (user == null)
+                    {
+                        return Results.NotFound(new { message = "Användaren hittades inte" });
+                    }
+
+                    db.Users.Remove(user);
+                    await db.SaveChangesAsync();
+                    return Results.Ok(new { message = "Användaren har tagits bort" });
+                }
+                catch (Exception ex)
+                {
+                    return Results.BadRequest(new { message = "Kunde inte ta bort användaren", error = ex.Message });
+                }
+            });
+        // PUT: Uppdatera en användare
+        app.MapPut("/api/users/{id}", async (int id, UserForm updatedUser, AppDbContext db) =>
+        {
+            try
+            {
+                var user = await db.Users.FindAsync(id);
+                if (user == null)
+                {
+                    return Results.NotFound(new { message = "Användaren hittades inte" });
+                }
+
+                // Uppdatera användarens egenskaper
+                user.FirstName = updatedUser.FirstName;
+                user.Password = updatedUser.Password;
+                user.Company = updatedUser.Company;
+                user.Role = updatedUser.Role;
+                user.Company = updatedUser.Company;
+
+                await db.SaveChangesAsync();
+                return Results.Ok(new { message = "Användaren har uppdaterats", user });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { message = "Kunde inte uppdatera användaren", error = ex.Message });
+            }
+        });
+
 
         app.MapGet("/api/users", async (AppDbContext db) => // Mappar GET-begäran för att hämta alla användare
         {
