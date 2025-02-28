@@ -28,13 +28,10 @@ export default function ChatModal({ token, onClose }) {
     const emojiButtonRef = useRef(null);
     const intervalRef = useRef(null);
 
-    // Initialize chat when component mounts or token changes
     useEffect(() => {
         console.log('ChatModal mounted with token:', token);
-        if (token) {
-            const cleanup = initializeChat(token);
-            return cleanup;
-        }
+        const cleanup = initializeChat(token);
+        return cleanup;
     }, [token, initializeChat]);
 
     // Close modal when clicking outside

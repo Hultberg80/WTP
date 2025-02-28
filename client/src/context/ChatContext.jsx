@@ -29,96 +29,66 @@ export function ChatProvider({ children }) {
   const messagesEndRef = useRef(null);
   const emojiPickerRef = useRef(null);
 
-  // Fetch chat data based on token - improved with separate API calls and better error handling
   const fetchChatData = useCallback(async (token) => {
     if (!token) return;
     
     try {
-      // Only set loading on initial load
-      const isInitialLoad = !chatData;
-      if (isInitialLoad) {
-        setLoading(true);
+      setLoading(true);
+      
+      // Fetch chat info and messages in parallel
+      const [chatResponse, messagesResponse] = await Promise.all([
+        fetch(`/api/chat/${token}`),
+        fetch(`/api/chat/messages/${token}`)
+      ]);
+  
+      if (!chatResponse.ok || !messagesResponse.ok) {
+        throw new Error('Kunde inte hämta chattdata');
       }
-      
-      // Split the fetches to handle errors individually
-      console.log('Fetching chat data for token:', token);
-      
-      // Get chat info first
-      const chatResponse = await fetch(`/api/chat/${token}`);
-      if (!chatResponse.ok) {
-        throw new Error(`Failed to fetch chat info: ${chatResponse.status}`);
-      }
-      
-      const chatInfo = await chatResponse.json();
-      console.log('Chat info received:', chatInfo);
-      
-      // Only update chat data if we got valid info
-      if (chatInfo) {
-        setChatData(chatInfo);
-      }
-      
-      // Now get messages
-      const messagesResponse = await fetch(`/api/chat/messages/${token}`);
-      if (!messagesResponse.ok) {
-        // Don't throw here - we want to preserve chat data even if messages fail
-        console.error(`Failed to fetch messages: ${messagesResponse.status}`);
-        setError('Kunde inte uppdatera meddelanden. Försök igen senare.');
-        return;
-      }
-      
-      const chatMessages = await messagesResponse.json();
-      console.log('Messages received:', chatMessages.length);
-      
-      // Only update messages if we got a valid array
-      if (chatMessages && Array.isArray(chatMessages)) {
-        setMessages(chatMessages);
-        // Clear any existing error if messages were successfully loaded
-        setError(null);
-      }
+  
+      const [chatInfo, chatMessages] = await Promise.all([
+        chatResponse.json(),
+        messagesResponse.json()
+      ]);
+  
+      // Reset states to ensure clean slate
+      setChatData(chatInfo);
+      setMessages(chatMessages);
+      setCurrentToken(token);
+      setError(null);
     } catch (err) {
       console.error('Error fetching chat data:', err);
-      setError(err.message);
+      setError(err.message || 'Ett oväntat fel inträffade');
       
-      // Don't clear existing data on error
+      // If fetch fails, reset everything
+      setChatData(null);
+      setMessages([]);
+      setCurrentToken(null);
     } finally {
       setLoading(false);
     }
-  }, [chatData]);
-
-  // Initialize chat with token
+  }, []);
+  
   const initializeChat = useCallback((token) => {
-    console.log('Initializing chat with token:', token);
-    setCurrentToken(token);
-    
-    // Reset state for new chat
-    if (currentToken !== token) {
-      setChatData(null);
-      setMessages([]);
-      setError(null);
-      setLoading(true);
-    }
-    
-    // Clear previous interval if exists
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    
-    // Initial fetch
+    // Reset everything before initializing
+    setChatData(null);
+    setMessages([]);
+    setError(null);
+    setLoading(true);
+  
+    // Immediate fetch
     fetchChatData(token);
-    
+  
     // Set up polling
-    intervalRef.current = setInterval(() => {
-      console.log('Polling for new messages...');
+    const intervalId = setInterval(() => {
       fetchChatData(token);
     }, 5000);
-    
+  
+    // Return cleanup function
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      clearInterval(intervalId);
     };
-  }, [fetchChatData, currentToken]);
-
+  }, [fetchChatData]);
+  
   // Clean up interval on unmount
   useEffect(() => {
     return () => {
