@@ -18,3 +18,4 @@ export function GlobalProvider({ children }) {
     </AuthProvider>
   );
 }
+

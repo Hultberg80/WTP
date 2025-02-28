@@ -1,20 +1,8 @@
-// Main wrapper component for the app
-// client/src/context/GlobalProvider.jsx
-import { AuthProvider } from './AuthContext';
-import { ChatProvider } from './ChatContext';
-import { FormProvider } from './FormContext';
-import { TicketProvider } from './TicketContext';
+// Export all context hooks from client/src/context
+// This will allow us to import all context hooks from a single file in other components.
 
-export function GlobalProvider({ children }) {
-  return (
-    <AuthProvider>
-      <FormProvider>
-        <TicketProvider>
-          <ChatProvider>
-            {children}
-          </ChatProvider>
-        </TicketProvider>
-      </FormProvider>
-    </AuthProvider>
-  );
-}
+export { GlobalProvider } from './GlobalProvider';
+export { useAuth } from './AuthContext';
+export { useChat } from './ChatContext';
+export { useForm } from './FormContext';
+export { useTickets } from './TicketContext';
