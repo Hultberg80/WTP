@@ -143,6 +143,13 @@ function UserAndTicketPage() {
     ? tickets.filter(ticket => ticket.company === selectedCompany) 
     : tickets;
 
+  
+  // I AdminDashboard.jsx
+useEffect(() => {
+  fetchUsers(); // Om det finns en sådan funktion
+  fetchTickets(); // Om AdminDashboard använder tickets
+}, []);
+  
   return (
     <div className="page-container">
       <div className="view-toggle">

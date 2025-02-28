@@ -106,6 +106,7 @@ export function TicketProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const intervalRef = useRef(null);
   const initialLoadRef = useRef(true);
+  
   const fetchTickets = useCallback(async () => {
     if (!isAuthenticated) return;
     
@@ -165,6 +166,7 @@ export function TicketProvider({ children }) {
       }
     }
   }, [isAuthenticated]);
+  
   const setDraggedTicket = (ticket) => {
     dispatch({ 
       type: ACTIONS.SET_DRAGGED_TICKET, 

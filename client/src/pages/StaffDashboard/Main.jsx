@@ -1,7 +1,6 @@
-// pages/StaffDashboard/Main.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react"; // Lägg till useEffect i importen
 import Aside from "./Aside";
-import ChatModal from "../../pages/ChatModal"; // Importera ChatModal för att öppna chatt i modal
+import ChatModal from "../../pages/ChatModal";
 import { useTickets, useAuth } from "../../context";
 
 function Main() {
@@ -20,6 +19,11 @@ function Main() {
     updateTicket,
     formatDate
   } = useTickets();
+
+  // Endast denna minimala useEffect, inget annat
+  useEffect(() => {
+    fetchTickets();
+  }, []);
 
   // Handle drag start
   const handleDragStart = (task) => {
