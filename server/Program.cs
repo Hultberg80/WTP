@@ -1,10 +1,15 @@
-﻿using Microsoft.EntityFrameworkCore; // Importerar EntityFrameworkCore för att kunna använda databas
+﻿using System.Net;
+using Microsoft.EntityFrameworkCore; // Importerar EntityFrameworkCore för att kunna använda databas
 using server.Data; // Importerar server.Data för att få tillgång till AppDbContext
 using server.Services; // Importerar server.Services för att få tillgång till EmailService
 using server.Models; // Importerar server.Models för att få tillgång till datamodeller
-using System.Text.Json; // Importerar System.Text.Json för JSON-serialisering
+using System.Text.Json;
+using Azure.Core;
+using Npgsql;
+using server.Records; // Importerar System.Text.Json för JSON-serialisering
 
-namespace server; // Deklarerar namnrymden för serverprojektet
+namespace server;
+// Deklarerar namnrymden för serverprojektet
 
 public class Program // Deklarerar huvudklassen Program
 {
@@ -16,6 +21,13 @@ public class Program // Deklarerar huvudklassen Program
         builder.Services.AddSwaggerGen(); // Lägger till Swagger-generering
         builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
         builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
+        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSession(options =>
+        {
+            options.IdleTimeout = TimeSpan.FromMinutes(20);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+        });
 
         builder.Services.AddCors(options => // Lägger till CORS-stöd
         {
@@ -45,6 +57,74 @@ public class Program // Deklarerar huvudklassen Program
             app.UseSwagger(); // Aktiverar Swagger
             app.UseSwaggerUI(); // Aktiverar Swagger UI
         }
+
+        app.UseSession();
+
+        app.MapGet("/api/login", (Func<HttpContext, Task<IResult>>)GetLogin);
+        app.MapPost("/api/login", (Func<HttpContext, LoginRequest, NpgsqlDataSource, Task<IResult>>)Login);
+        app.MapDelete("/api/login", (Func<HttpContext, Task<IResult>>)Logout);
+
+
+        static async Task<IResult> GetLogin(HttpContext context)
+        {
+            Console.WriteLine("GetSession is called.. Getting session");
+            var key = await Task.Run(() => context.Session.GetString("User"));
+            if (key == null)
+            {
+                return Results.NotFound(new { message = "No one is logged in" });
+            }
+
+            var user = JsonSerializer.Deserialize<User>(key);
+            Console.WriteLine("User: " + user);
+            return Results.Ok(user);
+        }
+
+        static async Task<IResult> Login(HttpContext context, LoginRequest loginRequest, NpgsqlDataSource db)
+        {
+            if (context.Session.GetString("User") != null)
+            {
+                return Results.BadRequest(new { message = "Someone is already logged in" });
+            }
+
+            Console.WriteLine("SetSession is called..Setting session");
+
+            await using var cmd = db.CreateCommand("SELECT * From Users WHERE FirstName = @FirstName AND Password = @Password");
+            cmd.Parameters.AddWithValue("@firstname", loginRequest.Firstname);
+            cmd.Parameters.AddWithValue("@password", loginRequest.Password);
+
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                if (reader.HasRows)
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        User user = new User(
+                            reader.GetInt32(reader.GetOrdinal("id")),
+                            reader.GetString(reader.GetOrdinal("firstname")),
+                            reader.GetString(reader.GetOrdinal("role")),
+                            reader.GetString(reader.GetOrdinal("company"))
+                        );
+                        await Task.Run(() => context.Session.SetString("User", JsonSerializer.Serialize(user)));
+                        return Results.Ok(new { firstname = user.FirstName });
+                    }
+                }
+            }
+
+            return Results.NotFound(new { message = "No user found." });
+        }
+
+        static async Task<IResult> Logout(HttpContext context)
+        {
+            if (context.Session.GetString("User") == null)
+            {
+                return Results.Conflict(new { message = "No login found." });
+            }
+
+            Console.WriteLine("ClearSession is called.. Clearing session");
+            await Task.Run(context.Session.Clear);
+            return Results.Ok(new { message = "Logged out." });
+        }
+
 
         app.UseHttpsRedirection(); // Aktiverar HTTPS-omdirigering
         app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
