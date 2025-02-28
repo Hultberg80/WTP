@@ -106,7 +106,6 @@ export function TicketProvider({ children }) {
   const { isAuthenticated } = useAuth();
   const intervalRef = useRef(null);
   const initialLoadRef = useRef(true);
-
   const fetchTickets = useCallback(async () => {
     if (!isAuthenticated) return;
     
@@ -125,12 +124,17 @@ export function TicketProvider({ children }) {
         }
       });
       
+      // Handle errors more gracefully
       if (response.status === 403) {
-        throw new Error('Åtkomst nekad. Vänligen logga in igen.');
+        console.error('Access denied when fetching tickets');
+        dispatch({ type: ACTIONS.SET_ERROR, payload: 'Åtkomst nekad. Vänligen logga in igen.' });
+        return; // Return without throwing
       }
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        console.error(`Ticket fetch failed with status: ${response.status}`);
+        dispatch({ type: ACTIONS.SET_ERROR, payload: `HTTP error! status: ${response.status}` });
+        return; // Return without throwing
       }
       
       const data = await response.json();
@@ -153,31 +157,14 @@ export function TicketProvider({ children }) {
     } catch (error) {
       console.error("Error fetching tickets:", error);
       dispatch({ type: ACTIONS.SET_ERROR, payload: error.message });
+      // Don't rethrow - just report the error
     } finally {
       if (initialLoadRef.current) {
         initialLoadRef.current = false;
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
       }
     }
   }, [isAuthenticated]);
-
-  // Effect to fetch tickets when component mounts
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchTickets();
-      
-      // Set up polling interval
-      intervalRef.current = setInterval(fetchTickets, 30000);
-      
-      // Clean up on unmount
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-      };
-    }
-  }, [fetchTickets, isAuthenticated]);
-
-  // Drag and drop handlers
   const setDraggedTicket = (ticket) => {
     dispatch({ 
       type: ACTIONS.SET_DRAGGED_TICKET, 

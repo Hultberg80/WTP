@@ -252,7 +252,7 @@ public class Program // Deklarerar huvudklassen Program
                 }
             });
 
-        // Chat endpoints
+        // End point för att hämta det första meddelandet i chatten från Formulär
         app.MapGet("/api/chat/{chatToken}",
             async (string chatToken,
                 AppDbContext db) => // Mappar GET-begäran för att hämta chattinformation baserat på chat-token
@@ -294,7 +294,8 @@ public class Program // Deklarerar huvudklassen Program
                     }); // Returnerar ett BadRequest-resultat vid fel
                 }
             });
-
+        
+// Enpoint för att skicka meddelande i chatten
         app.MapPost("/api/chat/message",
             async (ChatMessage message, AppDbContext db) => // Mappar POST-begäran för att skicka ett chattmeddelande
             {
@@ -316,7 +317,7 @@ public class Program // Deklarerar huvudklassen Program
                     }); // Returnerar ett BadRequest-resultat vid fel
                 }
             });
-
+ // End point för att hämta chattmeddelanden från databasen ChatMessages
         app.MapGet("/api/chat/messages/{chatToken}",
             async (string chatToken,
                 AppDbContext db) => // Mappar GET-begäran för att hämta chattmeddelanden baserat på chat-token

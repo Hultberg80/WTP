@@ -16,7 +16,7 @@ const initialState = {
   },
   message: { text: '', isError: false },
   isSubmitting: false,
-  isSubmitted: false // Ny flagga för att spåra när formuläret har skickats
+  isSubmitted: false
 };
 
 // Create context
@@ -29,7 +29,8 @@ const ACTIONS = {
   RESET_FORM: 'RESET_FORM',
   SET_MESSAGE: 'SET_MESSAGE',
   SET_SUBMITTING: 'SET_SUBMITTING',
-  SET_SUBMITTED: 'SET_SUBMITTED' // Ny action för lyckad inskickning
+  SET_SUBMITTED: 'SET_SUBMITTED',
+  COMPLETE_RESET: 'COMPLETE_RESET'
 };
 
 // Reducer function
@@ -49,10 +50,17 @@ function formReducer(state, action) {
         }
       };
     case ACTIONS.RESET_FORM:
-      // Bevara meddelandet när formuläret återställs om det just har skickats
       return {
         ...initialState,
         message: state.isSubmitted ? state.message : initialState.message
+      };
+    case ACTIONS.COMPLETE_RESET:
+      return {
+        ...initialState,
+        message: {
+          text: 'Formuläret har skickats! Kolla din e-post för chattlänken.',
+          isError: false
+        }
       };
     case ACTIONS.SET_MESSAGE:
       return {
@@ -78,12 +86,11 @@ function formReducer(state, action) {
 export function FormProvider({ children }) {
   const [state, dispatch] = useReducer(formReducer, initialState);
 
-  // Återställ isSubmitted efter att meddelandet har visats en stund
+  // Reset isSubmitted after showing message for a while
   useEffect(() => {
     let timeoutId;
     
     if (state.isSubmitted) {
-      // Återställ isSubmitted efter 5 sekunder (du kan justera tiden)
       timeoutId = setTimeout(() => {
         dispatch({
           type: ACTIONS.SET_SUBMITTED,
@@ -136,6 +143,11 @@ export function FormProvider({ children }) {
   };
 
   const submitForm = async () => {
+    // Reset any previous submission state first
+    dispatch({
+      type: ACTIONS.SET_SUBMITTED,
+      payload: false
+    });
     setSubmitting(true);
     setMessage('');
     
@@ -197,19 +209,19 @@ export function FormProvider({ children }) {
         const result = await response.json();
         console.log("Formulär skickat framgångsrikt:", result);
         
-        // VIKTIGT: Sätt isSubmitted till true för att indikera att formuläret har skickats
+        // Set success message
+        setMessage('Formuläret har skickats! Kolla din e-post för chattlänken.', false);
+        
+        // Complete reset of form data to initial state
+        dispatch({
+          type: ACTIONS.COMPLETE_RESET
+        });
+        
+        // Set submitted to true after reset (so message shows but form is clean)
         dispatch({
           type: ACTIONS.SET_SUBMITTED,
           payload: true
         });
-        
-        // Visa bekräftelsemeddelande
-        setMessage('Formuläret har skickats! Kolla din e-post för chattlänken.', false);
-        
-        // Vänta med att återställa formuläret så att meddelandet hinner visas
-        setTimeout(() => {
-          resetForm();
-        }, 500);
         
         return true;
       } else {
