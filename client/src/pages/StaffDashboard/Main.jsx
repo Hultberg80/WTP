@@ -1,337 +1,185 @@
-// Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
-import { useState, useEffect, useCallback, useRef } from "react";
+// pages/StaffDashboard/Main.jsx
+import { useState } from "react";
 import Aside from "./Aside";
-import ChatModal from "./ChatModal"; // Importera ChatModal-komponenten
+import ChatModal from "../../pages/ChatModal"; // Importera ChatModal för att öppna chatt i modal
+import { useTickets, useAuth } from "../../context";
 
-// Definierar huvudkomponenten för applikationen
 function Main() {
-    // State för alla ärenden/tasks
-    const [tasks, setTasks] = useState([]);
-    // State för användarens egna ärenden
-    const [myTasks, setMyTasks] = useState([]);
-    // State för färdiga ärenden
-    const [done, setDone] = useState([]);
-    // State för att hålla koll på vilket ärende som dras
-    const [draggedTask, setDraggedTask] = useState(null);
-    // State för laddningsstatus
-    const [loading, setLoading] = useState(true);
-    // State för felhantering
-    const [error, setError] = useState(null);
-    // Referens för att hålla koll på intervallet för automatisk uppdatering
-    const intervalRef = useRef(null);
-    // Referens för att hålla koll på om det är första laddningen
-    const initialLoadRef = useRef(true);
-    // State för att hålla koll på om chattmodalen är öppen
-    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
-    // State för att hålla koll på vilken chatt som är öppen
-    const [currentChatToken, setCurrentChatToken] = useState(null);
+  const [activeChatToken, setActiveChatToken] = useState(null);
+  
+  const {
+    tickets,
+    myTickets,
+    doneTickets,
+    draggedTicket,
+    loading,
+    error,
+    fetchTickets,
+    setDraggedTicket,
+    moveTicket,
+    updateTicket,
+    formatDate
+  } = useTickets();
 
-    const fetchTickets = useCallback(async () => {
-        try {
-            if (initialLoadRef.current) {
-                setLoading(true);
-            }
-            setError(null);
-    
-            const response = await fetch('/api/tickets', {
-                credentials: 'include', // Viktigt för att skicka med cookies
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (response.status === 403) {
-                throw new Error('Åtkomst nekad. Vänligen logga in igen.');
-            }
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-    
-            const data = await response.json();
-            
-            const newTickets = data.map(ticket => ({
-                ...ticket,
-                id: ticket.chatToken,
-                issueType: `${ticket.sender} - ${ticket.formType}`,
-                wtp: ticket.formType,
-                chatToken: ticket.chatToken // Se till att chatToken är tillgänglig
-            }));
-    
-            updateTasks(newTickets);
-        } catch (error) {
-            console.error("Error fetching tickets:", error);
-            setError(error.message);
-        } finally {
-            if (initialLoadRef.current) {
-                setLoading(false);
-                initialLoadRef.current = false;
-            }
-        }
-    }, []);
+  // Handle drag start
+  const handleDragStart = (task) => {
+    setDraggedTicket(task);
+  };
 
-    // Effekt som körs när komponenten monteras
-    useEffect(() => {
-        // Hämtar ärenden direkt
-        fetchTickets();
+  // Handle drop in a column
+  const handleDrop = (sourceList, targetList) => {
+    if (draggedTicket) {
+      moveTicket(sourceList, targetList, draggedTicket.id);
+    }
+  };
 
-        // Rensar eventuellt existerande intervall
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-        }
+  // Prevent default for drag over
+  const handleDragOver = (e) => e.preventDefault();
 
-        // Sätter upp ett nytt intervall för att hämta ärenden var 30:e sekund
-        intervalRef.current = setInterval(fetchTickets, 30000);
+  // Handle task edit
+  const handleTaskEdit = (taskId, newContent, listName) => {
+    updateTicket(taskId, { issueType: newContent }, listName);
+  };
 
-        // Cleanup-funktion som körs när komponenten avmonteras
-        return () => {
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-            }
-        };
-    }, [fetchTickets]);
+  // Öppna chatmodal med specifik token
+  const openChat = (token) => {
+    setActiveChatToken(token);
+  };
 
-    const updateTasks = (newTickets) => {
-        setTasks(prevTasks => {
-          // Create map of existing tasks for lookup
-          const existingTasks = new Map(prevTasks.map(task => [task.chatToken, task]));
-      
-          const updatedTasks = newTickets.map(ticket => {
-            // Preserve existing task data if available
-            const existingTask = existingTasks.get(ticket.chatToken);
-            
-            return {
-              ...ticket,
-              ...existingTask,
-              // Create a reliable displayTime field from various possible sources
-              displayTime: ticket.timestamp || ticket.submittedAt || ticket.createdAt || "Inget datum"
-            };
-          });
-      
-          // Sort by date, with error handling
-          return updatedTasks.sort((a, b) => {
-            const dateA = new Date(a.displayTime);
-            const dateB = new Date(b.displayTime);
-            return isNaN(dateA.getTime()) || isNaN(dateB.getTime()) 
-              ? 0 
-              : dateB - dateA;
-          });
-        });
-      };
+  // Stäng chatmodal
+  const closeChat = () => {
+    setActiveChatToken(null);
+  };
 
-    // Funktion som körs när man börjar dra ett ärende
-    const handleDragStart = (task) => {
-        setDraggedTask(task);
-    };
+  return (
+    <div className="main-container">
+      <Aside />
 
-    // Funktion som körs när man släpper ett ärende i en ny kolumn
-    const handleDrop = (setTargetColumn, targetColumn) => {
-        if (draggedTask) {
-            // Tar bort ärendet från alla kolumner
-            setTasks(prev => prev.filter(task => task.id !== draggedTask.id));
-            setMyTasks(prev => prev.filter(task => task.id !== draggedTask.id));
-            setDone(prev => prev.filter(task => task.id !== draggedTask.id));
+      {/* Visa ChatModal om en token är aktiv */}
+      {activeChatToken && (
+        <ChatModal 
+          token={activeChatToken} 
+          onClose={closeChat} 
+        />
+      )}
 
-            // Lägger till ärendet i målkolumnen
-            setTargetColumn(prev => [...prev, draggedTask]);
-            // Återställer draggedTask
-            setDraggedTask(null);
-        }
-    };
-
-    // Förhindrar standardbeteende vid drag-over
-    const handleDragOver = (e) => e.preventDefault();
-
-    // Funktion för att hantera redigering av ärenden
-    const handleTaskEdit = (taskId, newContent, setColumn) => {
-        setColumn(prev => prev.map(task =>
-            task.id === taskId
-                ? { ...task, content: newContent }
-                : task
-        ));
-    };
-
-    const formatDate = (dateString) => {
-        if (!dateString) return "Inget datum";
-        
-        try {
-          const date = new Date(dateString);
-          if (isNaN(date.getTime())) return "Ogiltigt datum";
-          
-          return date.toLocaleString('sv-SE', {
-            year: 'numeric',
-            month: 'numeric',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          });
-        } catch (error) {
-          console.error("Error formatting date:", error);
-          return "Datum ej tillgängligt";
-        }
-      };
-
-    // Funktion för att öppna chattmodalen
-    const openChatModal = (token) => {
-        setCurrentChatToken(token);
-        setIsChatModalOpen(true);
-    };
-
-    // Funktion för att stänga chattmodalen
-    const closeChatModal = () => {
-        setIsChatModalOpen(false);
-        setCurrentChatToken(null);
-    };
-
-    // Huvudvy för applikationen
-    return (
-        // Huvudcontainer
-        <div className="main-container">
-            
-            <Aside />
-
-            
-            <div
-                className="ticket-tasks"
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(setTasks, tasks)}
+      <div
+        className="ticket-tasks"
+        onDragOver={handleDragOver}
+        onDrop={() => handleDrop('myTickets', 'tickets')}
+      >
+        <h2 className="ticket-tasks-header">Ärenden</h2>
+        {tickets.map((task) => (
+          <div
+            key={task.id}
+            draggable
+            onDragStart={() => handleDragStart(task)}
+            className="ticket-task-item"
+          >
+            <div className="ticket-task-content"
+              contentEditable
+              suppressContentEditableWarning={true}
+              onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, 'tickets')}
             >
-                <h2 className="ticket-tasks-header">Ärenden</h2>
-                {tasks.map((task) => (
-                    // Container för varje ärende
-                    <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
-                    >
-                        
-                        <div className="ticket-task-content"
-                            contentEditable
-                            suppressContentEditableWarning={true}
-                            onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setTasks)}
-                        >
-                            {task.issueType}
-                        </div>
-                        
-                        <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
-                            <div className="ticket-task-email">{task.email}</div>
-                        <div className="ticket-task-time">
-                            {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
-                        </div>
-                            <div className="ticket-task-token">
-                                
-                                <button
-                                    onClick={() => openChatModal(task.chatToken)}
-                                    className="open-chat-btn"
-                                >
-                                    Öppna chatt
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+              {task.issueType}
             </div>
-
             
-            <div
-                className="ticket-my-tasks"
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(setMyTasks, myTasks)}
-            >
-                <h2 className="ticket-my-tasks-header">Mina ärenden</h2>
-                {myTasks.map((task) => (
-                    
-                    <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
-                    >
-                        
-                        <div className="ticket-task-content"
-                            contentEditable
-                            suppressContentEditableWarning={true}
-                            onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setMyTasks)}
-                        >
-                            {task.issueType}
-                        </div>
-                        
-                        <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
-                            <div className="ticket-task-email">{task.email}</div>
-                        <div className="ticket-task-time">
-                            {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
-                        </div>
-                            <div className="ticket-task-token">
-                               
-                                <button
-                                    onClick={() => openChatModal(task.chatToken)}
-                                    className="open-chat-btn"
-                                >
-                                    Öppna chatt
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+            <div className="ticket-task-details">
+              <div className="ticket-wtp">{task.wtp}</div>
+              <div className="ticket-task-email">{task.email}</div>
+              <div className="ticket-task-time">{formatDate(task.submittedAt || task.timestamp || task.createdAt)}</div>
+              <div className="ticket-task-token">
+                {/* Ändra till att öppna modal istället för ny flik */}
+                <button
+                  onClick={() => openChat(task.chatToken || task.id)}
+                  className="chat-link-button"
+                >
+                  Öppna chatt
+                </button>
+              </div>
             </div>
+          </div>
+        ))}
+      </div>
 
-           
-            <div
-                className="ticket-done"
-                onDragOver={handleDragOver}
-                onDrop={() => handleDrop(setDone, done)}
+      <div
+        className="ticket-my-tasks"
+        onDragOver={handleDragOver}
+        onDrop={() => handleDrop('tickets', 'myTickets')}
+      >
+        <h2 className="ticket-my-tasks-header">Mina ärenden</h2>
+        {myTickets.map((task) => (
+          <div
+            key={task.id}
+            draggable
+            onDragStart={() => handleDragStart(task)}
+            className="ticket-task-item"
+          >
+            <div className="ticket-task-content"
+              contentEditable
+              suppressContentEditableWarning={true}
+              onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, 'myTickets')}
             >
-                <h2 className="ticket-done-header">Klara</h2>
-                {done.map((task) => (
-                    
-                    <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
-                    >
-                        
-                        <div className="ticket-task-content"
-                            contentEditable
-                            suppressContentEditableWarning={true}
-                            onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setDone)}
-                        >
-                            {task.issueType}
-                        </div>
-                        
-                        <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
-                        <div className="ticket-task-time">
-                            {formatDate(task.submittedAt  || task.timestamp || task.createdAt)}
-                        </div>
-                            <div className="ticket-task-token">
-                               
-                                <button
-                                    onClick={() => openChatModal(task.chatToken)}
-                                    className="open-chat-btn"
-                                >
-                                    Öppna chatt
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+              {task.issueType}
             </div>
+            
+            <div className="ticket-task-details">
+              <div className="ticket-wtp">{task.wtp}</div>
+              <div className="ticket-task-email">{task.email}</div>
+              <div className="ticket-task-time">{formatDate(task.submittedAt || task.timestamp || task.createdAt)}</div>
+              <div className="ticket-task-token">
+                {/* Ändra till att öppna modal istället för ny flik */}
+                <button
+                  onClick={() => openChat(task.chatToken || task.id)}
+                  className="chat-link-button"
+                >
+                  Öppna chatt
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
-            {/* Visa chattmodalen om den är öppen */}
-            {isChatModalOpen && currentChatToken && (
-                <ChatModal 
-                    token={currentChatToken} 
-                    onClose={closeChatModal} 
-                />
-            )}
-        </div>
-    );
+      <div
+        className="ticket-done"
+        onDragOver={handleDragOver}
+        onDrop={() => handleDrop('myTickets', 'doneTickets')}
+      >
+        <h2 className="ticket-done-header">Klara</h2>
+        {doneTickets.map((task) => (
+          <div
+            key={task.id}
+            draggable
+            onDragStart={() => handleDragStart(task)}
+            className="ticket-task-item"
+          >
+            <div className="ticket-task-content"
+              contentEditable
+              suppressContentEditableWarning={true}
+              onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, 'doneTickets')}
+            >
+              {task.issueType}
+            </div>
+            
+            <div className="ticket-task-details">
+              <div className="ticket-wtp">{task.wtp}</div>
+              <div className="ticket-task-time">{formatDate(task.submittedAt || task.timestamp || task.createdAt)}</div>
+              <div className="ticket-task-token">
+                {/* Ändra till att öppna modal istället för ny flik */}
+                <button
+                  onClick={() => openChat(task.chatToken || task.id)}
+                  className="chat-link-button"
+                >
+                  Öppna chatt
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-// Exporterar Main-komponenten som default export
 export default Main;
