@@ -94,25 +94,37 @@ public class Program // Deklarerar huvudklassen Program
             }
         });
 
-        app.MapGet("/api/users", async (NpgsqlDataSource db) => // Mappar GET-begäran för att hämta alla användare
+        app.MapGet("/api/users", async (NpgsqlDataSource db) =>
         {
-            List<UserForm> users = new(); // Skapar en lista för att lagra användare
-            
-            using var cmd = db.CreateCommand("SELECT id, first_name, company, role_id FROM users"); // Skapar en SQL-fråga för att hämta användare
-            var reader = await cmd.ExecuteReaderAsync(); // Utför SQL-frågan och läser resultatet
-            
-            while (await reader.ReadAsync()) // Loopar igenom varje rad i resultatet
+            try
             {
-                users.Add(new UserForm // Lägger till en ny användare i listan
+                List<UserForm> users = new();
+        
+                // Updated query to include password field and match UserForm properties
+                using var cmd = db.CreateCommand("SELECT id, first_name, password, company, role_id FROM users");
+                var reader = await cmd.ExecuteReaderAsync();
+        
+                while (await reader.ReadAsync())
                 {
-                    Id = reader.GetInt32(0), // Hämtar ID från resultatet
-                    FirstName = reader.GetString(1), // Hämtar förnamn från resultatet
-                    Company = reader.GetString(2), // Hämtar företag från resultatet
-                    Role = reader.GetInt32(3) == 1 ? "staff" : "admin" // Hämtar roll från resultatet
-                });
+                    users.Add(new UserForm
+                    {
+                        Id = reader.GetInt32(0),
+                        FirstName = reader.GetString(1),
+                        Password = reader.GetString(2),
+                        Company = reader.GetString(3),
+                        Role = reader.GetInt32(4) == 1 ? "staff" : "admin"
+                    });
+                }
+        
+                return Results.Ok(users);
             }
-            
-            return Results.Ok(users); // Returnerar ett OK-resultat med användarna
+            catch (Exception ex)
+            {
+                // Improved error handling with detailed message
+                Console.WriteLine($"Error fetching users: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return Results.BadRequest(new { message = "Kunde inte hämta användare", error = ex.Message });
+            }
         });
 
         app.MapGet("/api/chat/latest/{chatToken}",
@@ -191,20 +203,75 @@ public class Program // Deklarerar huvudklassen Program
         });
 
             
-                
+                app.MapDelete("/api/users/{id}", async (int id, NpgsqlDataSource db) =>
+{
+    try
+    {
+        using var cmd = db.CreateCommand("DELETE FROM users WHERE id = @id");
+        cmd.Parameters.AddWithValue("id", id);
+        
+        int rowsAffected = await cmd.ExecuteNonQueryAsync();
+        
+        if (rowsAffected > 0)
+        {
+            return Results.Ok(new { message = "Användare har tagits bort" });
+        }
+        
+        return Results.NotFound(new { message = "Användare hittades inte" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = "Kunde inte ta bort användare", error = ex.Message });
+    }
+});
+
+// Update User Endpoint
+app.MapPut("/api/users/{id}", async (int id, UserForm updatedUser, NpgsqlDataSource db) =>
+{
+    try
+    {
+        using var cmd = db.CreateCommand(@"
+            UPDATE users 
+            SET first_name = @first_name, 
+                password = @password, 
+                company = @company, 
+                role_id = @role_id
+            WHERE id = @id
+            RETURNING id, first_name, company, role_id");
+            
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("first_name", updatedUser.FirstName);
+        cmd.Parameters.AddWithValue("password", updatedUser.Password);
+        cmd.Parameters.AddWithValue("company", updatedUser.Company);
+        cmd.Parameters.AddWithValue("role_id", updatedUser.Role == "admin" ? 2 : 1);
+        
+        using var reader = await cmd.ExecuteReaderAsync();
+        
+        if (await reader.ReadAsync())
+        {
+            return Results.Ok(new 
+            { 
+                message = "Användare uppdaterad",
+                user = new
+                {
+                    Id = reader.GetInt32(0),
+                    FirstName = reader.GetString(1),
+                    Company = reader.GetString(2),
+                    Role = reader.GetInt32(3) == 1 ? "staff" : "admin"
+                }
+            });
+        }
+        
+        return Results.NotFound(new { message = "Användare hittades inte" });
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = "Kunde inte uppdatera användare", error = ex.Message });
+    }
+});
        
 
-        /*app.MapGet("/api/users/{id}",
-            async (int id, AppDbContext db) => // Mappar GET-begäran för att hämta en användare baserat på ID
-            {
-                var user = await db.Users.FindAsync(id); // Söker efter användaren med det angivna ID:et asynkront
-                return
-                    user is null
-                        ? Results.NotFound()
-                        : Results.Ok(user); // Returnerar NotFound om användaren inte hittas, annars OK med användaren
-            }); */
-
-        // Fordon Form Endpoints
+   
         
 app.MapPost("/api/fordon", async (FordonForm submission, NpgsqlDataSource db, IEmailService emailService, IConfiguration config) =>
 {
@@ -260,6 +327,7 @@ app.MapPost("/api/fordon", async (FordonForm submission, NpgsqlDataSource db, IE
 
         // Tele Form Endpoints
         
+// Replace your existing tele form endpoint with this fixed version
 app.MapPost("/api/tele", async (TeleForm submission, NpgsqlDataSource db, IEmailService emailService, IConfiguration config) =>
 {
     try
@@ -268,11 +336,11 @@ app.MapPost("/api/tele", async (TeleForm submission, NpgsqlDataSource db, IEmail
         submission.SubmittedAt = DateTime.UtcNow;
         submission.IsChatActive = true;
 
+        // Fixed SQL - removed the comma after table name and fixed parameter order
         using var cmd = db.CreateCommand(@"
-            INSERT INTO tele_form (, first_name,email, service_type, issue_type, message ,chat_token ,submitted_at, is_chat_active,  company_type)
-            VALUES (@chat_token, @first_name, @email, @service_type, @issue_type, @message, @chat_token, @submitted_at, @is_chat_active, @company_type)");
+            INSERT INTO tele_form (first_name, email, service_type, issue_type, message, chat_token, submitted_at, is_chat_active, company_type)
+            VALUES (@first_name, @email, @service_type, @issue_type, @message, @chat_token, @submitted_at, @is_chat_active, @company_type)");
 
-        
         cmd.Parameters.AddWithValue("first_name", submission.FirstName);
         cmd.Parameters.AddWithValue("email", submission.Email);
         cmd.Parameters.AddWithValue("service_type", submission.ServiceType);
@@ -283,8 +351,6 @@ app.MapPost("/api/tele", async (TeleForm submission, NpgsqlDataSource db, IEmail
         cmd.Parameters.AddWithValue("is_chat_active", submission.IsChatActive);
         cmd.Parameters.AddWithValue("company_type", submission.CompanyType);
         
-        
-
         await cmd.ExecuteNonQueryAsync();
 
         using var chatCmd = db.CreateCommand(@"
@@ -314,8 +380,6 @@ app.MapPost("/api/tele", async (TeleForm submission, NpgsqlDataSource db, IEmail
         return Results.BadRequest(new { message = "Ett fel uppstod", error = ex.Message });
     }
 });
-
-
         
         // Forsakring Form Endpoints
 app.MapPost("/api/forsakring", async (ForsakringsForm submission, NpgsqlDataSource db, IEmailService emailService, IConfiguration config) =>
