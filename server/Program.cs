@@ -80,7 +80,7 @@ public class Program // Deklarerar huvudklassen Program
             return Results.Ok(user);
         }
 
-        static async Task<IResult> Login(HttpContext context, LoginRequest loginRequest, AppDbContext db)
+        static async Task<IResult> Login(HttpContext context, LoginRequest loginRequest, NpgsqlDataSource db)
         {
             if (context.Session.GetString("User") != null)
             {
@@ -90,21 +90,27 @@ public class Program // Deklarerar huvudklassen Program
             Console.WriteLine("SetSession is called..Setting session");
 
             // Hämta användaren från databasen
-            var user = await db.Users
-                .Where(u => u.FirstName == loginRequest.Firstname && u.Password == loginRequest.Password)
-                .Select(u => new User
-                {
-                    Id = u.Id,
-                    FirstName = u.FirstName,
-                    Role = u.Role,
-                    Company = u.Company
-                })
-                .FirstOrDefaultAsync();
+            await using var cmd =
+                db.CreateCommand("SELECT * FROM users WHERE username = @username and password = @password");
+            cmd.Parameters.AddWithValue("@username", Request.Username);
+            cmd.Parameters.AddWithValue("@password", Request.Password);
 
-            if (user != null)
+            await using (var reader = await cmd.ExecuteReaderAsync())
             {
-                context.Session.SetString("User", JsonSerializer.Serialize(user));
-                return Results.Ok(new { firstname = user.FirstName });
+                if (reader.HasRows)
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        User user = new User(
+                            reader.GetInt32(reader.GetOrdinal("id")),
+                            reader.GetString(reader.GetOrdinal("username")),
+                            reader.GetString(reader.GetOrdinal("role_id")),
+                            reader.GetString(reader.GetOrdinal("company"))
+                        );
+                        await Task.Run(() => context.Session.SetString("User", JsonSerializer.Serialize(user)));
+                        return Results.Ok(new { username = user.Username });
+                    }
+                }
             }
 
             return Results.NotFound(new { message = "No user found." });
