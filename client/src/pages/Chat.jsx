@@ -17,20 +17,20 @@ export default function Chat() {
     const modalRef = useRef(null);
 
     // Combined fetch function
-    const fetchData = async () => {
+    function fetchData() {
         if (!token) return;
 
         try {
-            const [chatResponse, messagesResponse] = await Promise.all([
-                fetch(`/api/chat/${token}`),
-                fetch(`/api/chat/messages/${token}`)
+            const [chatResponse, messagesResponse] = Promise.all([
+                fetch(`/api/chat/latest/${token}`),
+                fetch(`/api/chat/message/${token}`)
             ]);
 
             if (!chatResponse.ok || !messagesResponse.ok) {
                 throw new Error('Kunde inte hämta chattdata');
             }
 
-            const [chatInfo, chatMessages] = await Promise.all([
+            const [chatInfo, chatMessages] = Promise.all([
                 chatResponse.json(),
                 messagesResponse.json()
             ]);
@@ -81,7 +81,7 @@ export default function Chat() {
 
     // Close modal when clicking outside (keeping this from original)
     useEffect(() => {
-        const handleClickOutside = (event) => {
+        function handleClickOutside(event){
             if (
                 emojiPickerRef.current &&
                 !emojiPickerRef.current.contains(event.target) &&
@@ -96,7 +96,7 @@ export default function Chat() {
     }, [open]);
 
     // Add a function to handle closing the chat
-    const handleCloseChat = () => {
+    function handleCloseChat() {
         // Clear the interval to stop polling
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
@@ -109,7 +109,7 @@ export default function Chat() {
         // For example: props.onClose();
     };
 
-    const handleSendMessage = async () => {
+    function handleSendMessage(){
         if (message.trim() === "" || !chatData) return;
         
         // Store message locally before sending (for immediate UI feedback)
@@ -135,7 +135,7 @@ export default function Chat() {
     
         try {
             console.log('Sending message:', messageToSend);
-            const response = await fetch('/api/chat/message', {
+            const response = fetch('/api/chat/message', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -148,18 +148,18 @@ export default function Chat() {
             }
     
             // Get the response data which should include the saved message with ID
-            const result = await response.json();
+            const result = response.json();
             console.log('Message sent successfully:', result);
             
             // Replace temporary message with server response or fetch fresh data
-            await fetchData();
+            fetchData();
         } catch (error) {
             console.error('Error sending message:', error);
             setError("Kunde inte skicka meddelande. Försök igen.");
             // Optionally revert temporary message if sending failed
         }
     };
-    const handleEmojiClick = (emojiObject) => {
+    function handleEmojiClick(emojiObject){
         setMessage(prev => prev + emojiObject.emoji);
         setOpen(false);
     };
