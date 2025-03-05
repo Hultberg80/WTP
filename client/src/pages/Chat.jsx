@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import EmojiPicker from "emoji-picker-react";
 
+
 export default function Chat() {
     const { token } = useParams();
-    const navigate = useNavigate(); // Add useNavigate hook
+    const navigate = useNavigate();
     const [open, setOpen] = useState(false);
-    const [message, setMessage] = useState(""); 
+    const [message, setMessage] = useState("");
     const [messages, setMessages] = useState([]);
-    const [chatData, setChatData] = useState(null);
+    const [initialMessage, setInitialMessage] = useState(null);
+    const [currentUser, setCurrentUser] = useState("User"); // Default sender name
     const emojiPickerRef = useRef(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -16,250 +18,295 @@ export default function Chat() {
     const intervalRef = useRef(null);
     const modalRef = useRef(null);
 
-    // Combined fetch function
-    function fetchData() {
+    // STEP 1: Get the first message from initial_message
+    useEffect(() => {
         if (!token) return;
 
-        try {
-            const [chatResponse, messagesResponse] = Promise.all([
-                fetch(`/api/chat/latest/${token}`),
-                fetch(`/api/chat/message/${token}`)
-            ]);
-
-            if (!chatResponse.ok || !messagesResponse.ok) {
-                throw new Error('Kunde inte hämta chattdata');
+        const fetchInitialMessage = async () => {
+            try {
+                console.log("Fetching initial message for token:", token);
+                const response = await fetch(`/api/initial-message/${token}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch initial message: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("Initial message data:", data);
+                
+                setInitialMessage(data);
+                setCurrentUser(data.sender);
+                
+                // Add initial message to messages array
+                setMessages([{
+                    id: 'initial',
+                    sender: data.sender,
+                    message: data.message,
+                    timestamp: data.submittedAt
+                }]);
+                
+                setLoading(false);
+            } catch (err) {
+                console.error("Error fetching initial message:", err);
+                setError("Could not load initial message. Please try again.");
+                setLoading(false);
             }
+        };
 
-            const [chatInfo, chatMessages] = Promise.all([
-                chatResponse.json(),
-                messagesResponse.json()
-            ]);
-
-            console.log('Received data:', { chatInfo, chatMessages });
-            
-            setChatData(chatInfo);
-            setMessages(chatMessages);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Initial fetch and polling
-    useEffect(() => {
-        console.log('Setting up chat with token:', token);
-        
-        // Initial fetch
-        fetchData();
-
-        // Set up polling
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-        }
-        intervalRef.current = setInterval(fetchData, 5000);
-
-        return () => clearInterval(intervalRef.current);
+        fetchInitialMessage();
     }, [token]);
 
-    // Debug state changes
+    // STEP 3: Polling for new messages
     useEffect(() => {
-        console.log('State updated:', {
-            loading,
-            hasChat: !!chatData,
-            messageCount: messages.length,
-            error
-        });
-    }, [loading, chatData, messages, error]);
+        // Only start polling after initial message is loaded
+        if (!initialMessage) return;
+        
+        console.log("Setting up polling for new messages");
+        
+        const pollLatestMessage = async () => {
+            if (!token) return;
+            
+            try {
+                const response = await fetch(`/api/chat/latest/${token}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch latest message: ${response.status}`);
+                }
+                
+                const latestMessage = await response.json();
+                console.log("Latest message:", latestMessage);
+                
+                // Check if this is a new message we don't already have
+                const messageExists = messages.some(msg => 
+                    msg.message === latestMessage.message && 
+                    msg.sender === latestMessage.sender &&
+                    new Date(msg.timestamp).getTime() === new Date(latestMessage.submitted_at).getTime()
+                );
+                
+                if (!messageExists) {
+                    console.log("Adding new message to list");
+                    setMessages(prev => [...prev, {
+                        id: `msg-${Date.now()}`,
+                        sender: latestMessage.sender,
+                        message: latestMessage.message,
+                        timestamp: latestMessage.submitted_at
+                    }]);
+                }
+            } catch (err) {
+                console.error("Error polling latest message:", err);
+                // Don't set error state here to avoid disrupting the chat
+            }
+        };
+        
+        // Poll immediately once
+        pollLatestMessage();
+        
+        // Set up interval for polling
+        intervalRef.current = setInterval(pollLatestMessage, 3000);
+        
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+            }
+        };
+    }, [token, initialMessage, messages]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Close modal when clicking outside (keeping this from original)
+    // Close emoji picker when clicking outside
     useEffect(() => {
-        function handleClickOutside(event){
+        function handleClickOutside(event) {
             if (
                 emojiPickerRef.current &&
                 !emojiPickerRef.current.contains(event.target) &&
-                !event.target.closest(".emoji")
+                !event.target.closest(".emoji-button")
             ) {
                 setOpen(false);
             }
-        };
+        }
 
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [open]);
 
-    // Add a function to handle closing the chat
+    // Function to handle closing the chat
     function handleCloseChat() {
-        // Clear the interval to stop polling
         if (intervalRef.current) {
             clearInterval(intervalRef.current);
         }
-        
-        // Navigate back or to a specific route
-        navigate('/'); // Navigate to home or another appropriate route
-        
-        // If you're using this in a modal context, you might want to call a parent function instead
-        // For example: props.onClose();
-    };
+        navigate('/');
+    }
 
-    function handleSendMessage(){
-        if (message.trim() === "" || !chatData) return;
+    // STEP 2: Send message to chat_messages table
+    async function handleSendMessage() {
+        if (message.trim() === "" || !initialMessage) return;
         
-        // Store message locally before sending (for immediate UI feedback)
         const currentMessage = message.trim();
-        // Clear the input field immediately
         setMessage("");
         
+        // Create message object to send to API
         const messageToSend = {
             chatToken: token,
-            sender: chatData.firstName,
+            sender: currentUser,
             message: currentMessage
-            // Don't set timestamp - let the server handle it
         };
         
-        // Add temporary message to UI (optional, for immediate feedback)
+        // Optimistically add to UI
         const tempMessage = {
             id: `temp-${Date.now()}`,
-            sender: chatData.firstName,
+            sender: currentUser,
             message: currentMessage,
             timestamp: new Date().toISOString()
         };
         setMessages(prev => [...prev, tempMessage]);
-    
+        
         try {
-            console.log('Sending message:', messageToSend);
-            const response = fetch('/api/chat/message', {
+            console.log("Sending message:", messageToSend);
+            const response = await fetch('/api/chat/message', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(messageToSend)
             });
-    
-            if (!response.ok) {
-                throw new Error('Kunde inte skicka meddelande');
-            }
-    
-            // Get the response data which should include the saved message with ID
-            const result = response.json();
-            console.log('Message sent successfully:', result);
             
-            // Replace temporary message with server response or fetch fresh data
-            fetchData();
+            if (!response.ok) {
+                throw new Error(`Failed to send message: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log("Message sent successfully:", result);
+            
+            // The polling will pick up the new message automatically
         } catch (error) {
-            console.error('Error sending message:', error);
-            setError("Kunde inte skicka meddelande. Försök igen.");
-            // Optionally revert temporary message if sending failed
+            console.error("Error sending message:", error);
+            setError("Could not send message. Please try again.");
+            
+            // Remove the temporary message
+            setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
         }
-    };
-    function handleEmojiClick(emojiObject){
+    }
+
+    function handleEmojiClick(emojiObject) {
         setMessage(prev => prev + emojiObject.emoji);
         setOpen(false);
-    };
+    }
 
-    // Show loading skeleton (using original styling)
+    // Format date for display
+    function formatDate(dateString) {
+        if (!dateString) return "No date";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return "Invalid date";
+        return date.toLocaleString('sv-SE', {
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // Loading state
     if (loading) {
         return (
-            <div className="chat-modal" ref={modalRef}>
-                <div className="chat-modal__container">
-                    <div className="chat-modal__header">
-                        <div className="chat-modal__header-skeleton"></div>
-                    </div>
-                    <div className="chat-modal__messages">
-                        <div className="chat-modal__messages-loading">
-                            <div className="chat-modal__message-skeleton"></div>
-                            <div className="chat-modal__message-skeleton chat-modal__message-skeleton--right"></div>
-                            <div className="chat-modal__message-skeleton"></div>
-                        </div>
-                    </div>
-                    <div className="chat-modal__input-container">
-                        <div className="chat-modal__input-skeleton"></div>
-                    </div>
+            <div className="chat-container" ref={modalRef}>
+                <div className="chat-loading">
+                    <div className="chat-loading-spinner"></div>
+                    <p>Loading chat...</p>
                 </div>
             </div>
         );
     }
 
-    // Show error state (using original styling)
+    // Error state
     if (error) {
         return (
-            <div className="chat-modal" ref={modalRef}>
-                <div className="chat-modal__container">
-                    <div className="chat-modal__error">
-                        <p>{error}</p>
-                        <button 
-                            onClick={fetchData}
-                            className="chat-modal__error-button"
-                        >
-                            Försök igen
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Show empty state if no chat data (using original styling)
-    if (!chatData) {
-        return (
-            <div className="chat-modal" ref={modalRef}>
-                <div className="chat-modal__container">
-                    <div className="chat-modal__empty">
-                        Ingen chattdata tillgänglig
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Main chat UI (using original styling)
-    return (
-        <div className="chat-modal" ref={modalRef}>
-            <div className="chat-modal__container">
-                <div className="chat-modal__header">
-                    <h2 className="chat-modal__name">{chatData.firstName}</h2>
-                    {chatData.formType && 
-                        <div className="chat-modal__type">{chatData.formType}</div>
-                    }
+            <div className="chat-container" ref={modalRef}>
+                <div className="chat-error">
+                    <p>{error}</p>
                     <button 
-                        className="chat-modal__close" 
+                        onClick={() => window.location.reload()}
+                        className="chat-error-button"
+                    >
+                        Try again
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // No initial message state
+    if (!initialMessage) {
+        return (
+            <div className="chat-container" ref={modalRef}>
+                <div className="chat-empty">
+                    <p>No chat found with this token.</p>
+                    <button 
+                        onClick={() => navigate('/')}
+                        className="chat-empty-button"
+                    >
+                        Go back
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Main chat UI
+    return (
+        <div className="main-container">
+            <div className="chat-container">
+                <div className="chat-header">
+                    <h2 className="chat-name">{initialMessage.sender}</h2>
+                    
+                    {initialMessage.formType && (
+                        <div className="chat-form-type">
+                            {initialMessage.formType}
+                        </div>
+                    )}
+                    
+                    {initialMessage.issueType && (
+                        <div className="chat-issue-type">
+                            {initialMessage.issueType}
+                        </div>
+                    )}
+                    
+                    <button 
+                        className="chat-close-button" 
                         onClick={handleCloseChat}
                     >
                         &times;
                     </button>
                 </div>
                 
-                <div className="chat-modal__messages">
-                    {messages.map((msg) => (
+                <div className="chat-messages">
+                    {messages.map((msg, index) => (
                         <div 
-                            key={msg.id}
-                            className={`chat-modal__message ${
-                                msg.sender === chatData.firstName 
-                                    ? 'chat-modal__message--sent' 
-                                    : 'chat-modal__message--received'
+                            key={msg.id || index}
+                            className={`chat-message ${
+                                msg.sender === currentUser
+                                    ? 'chat-message-sent' 
+                                    : 'chat-message-received'
                             }`}
                         >
-                            <p className="chat-modal__message-text">{msg.message}</p>
-                            <small className="chat-modal__message-timestamp">
-                                {new Date(msg.timestamp).toLocaleString()}
-                            </small>
+                            <div className="chat-message-sender">{msg.sender}</div>
+                            <div className="chat-message-text">{msg.message}</div>
+                            <div className="chat-message-time">
+                                {formatDate(msg.timestamp)}
+                            </div>
                         </div>
                     ))}
                     <div ref={messagesEndRef} />
                 </div>
 
-                <div className="chat-modal__input-container">
+                <div className="chat-input-container">
                     <input 
                         type="text" 
-                        className="chat-modal__input-field"
-                        placeholder="Skriv ett meddelande..." 
+                        className="chat-input-field"
+                        placeholder="Write a message..." 
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyPress={(e) => {
@@ -269,20 +316,22 @@ export default function Chat() {
                         }}
                     />
 
-                    <div className="emoji" onClick={() => setOpen(!open)}>😃
+                    <div className="emoji-button" onClick={() => setOpen(!open)}>
+                        😃
                     </div>
+                    
                     {open && (
-                    <div ref={emojiPickerRef} className="emojipicker">
-                    <EmojiPicker onEmojiClick={handleEmojiClick} />
-                    </div>
+                        <div ref={emojiPickerRef} className="emoji-picker-container">
+                            <EmojiPicker onEmojiClick={handleEmojiClick} />
+                        </div>
                     )}
 
                     <button 
-                        className="chat-modal__send-button" 
+                        className="chat-send-button" 
                         onClick={handleSendMessage}
                         type="button"
                     >
-                        Skicka
+                        Send
                     </button>
                 </div>
             </div>
