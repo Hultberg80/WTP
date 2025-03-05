@@ -50,11 +50,11 @@ public class Program // Deklarerar huvudklassen Program
         
        
         // User Endpoints
-        app.MapPost("/api/users", async (UserForm user, NpgsqlDataSource db) =>
+        app.MapPost("/api/users", async (UserForm user, NpgsqlDataSource db, IEmailService emailService) =>
         {
             try
             {
-                // Determine role_id based on role
+                // Existing role_id logic
                 int roleId = user.Role?.ToLower() switch
                 {
                     "admin" => 2,
@@ -64,11 +64,11 @@ public class Program // Deklarerar huvudklassen Program
                 };
 
                 user.CreatedAt = DateTime.UtcNow;
-        
+
                 using var cmd = db.CreateCommand(@"
-            INSERT INTO users (first_name, password, company, created_at, role_id, email)
-            VALUES (@first_name, @password, @company, @created_at, @role_id, @email)
-            RETURNING first_name, company, created_at;");
+    INSERT INTO users (first_name, password, company, created_at, role_id, email)
+    VALUES (@first_name, @password, @company, @created_at, @role_id, @email)
+    RETURNING first_name, company, created_at;");
 
                 cmd.Parameters.AddWithValue("first_name", user.FirstName);
                 cmd.Parameters.AddWithValue("password", user.Password);
@@ -76,12 +76,13 @@ public class Program // Deklarerar huvudklassen Program
                 cmd.Parameters.AddWithValue("created_at", user.CreatedAt);
                 cmd.Parameters.AddWithValue("role_id", roleId);
                 cmd.Parameters.AddWithValue("email", user.Email);
-                
-                
 
                 using var reader = await cmd.ExecuteReaderAsync();
                 if (await reader.ReadAsync())
                 {
+                    // Send welcome email with credentials
+                    await emailService.SendUserCredentials(user.Email, user.FirstName, user.Password);
+
                     return Results.Ok(new
                     {
                         message = "Användare skapad",
@@ -93,7 +94,7 @@ public class Program // Deklarerar huvudklassen Program
                         }
                     });
                 }
-                
+        
                 return Results.BadRequest(new { message = "Kunde inte skapa användare" });
             }
             catch (Exception ex)
@@ -106,6 +107,7 @@ public class Program // Deklarerar huvudklassen Program
                 });
             }
         });
+
 
 
         app.MapGet("/api/users", async (NpgsqlDataSource db) => // Mappar GET-begäran för att hämta alla användare
