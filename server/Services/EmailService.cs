@@ -79,7 +79,7 @@ public class EmailService : IEmailService
             HtmlBody = $@"
             <h2>Välkommen {firstName}!</h2>
             <p>Ditt konto har skapats. Här är dina inloggningsuppgifter:</p>
-            <p><strong>Användarnamn:</strong> {recipientEmail}</p>
+            <p><strong>Användarnamn:</strong> {firstName}</p>
             <p><strong>Lösenord:</strong> {password}</p>
             <p>Vi rekommenderar att du ändrar ditt lösenord vid första inloggningen.</p>
             <br/>
