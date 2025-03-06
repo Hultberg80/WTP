@@ -43,7 +43,6 @@ public class Program // Deklarerar huvudklassen Program
             app.UseSwaggerUI(); // Aktiverar Swagger UI
         }
 
-        app.UseHttpsRedirection(); // Aktiverar HTTPS-omdirigering
         app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
         app.UseAuthentication(); // Aktiverar autentisering
         app.UseAuthorization(); // Aktiverar auktorisering
