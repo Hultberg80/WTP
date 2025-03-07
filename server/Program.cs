@@ -552,67 +552,8 @@ app.MapPost("/api/forsakring", async (ForsakringsForm submission, NpgsqlDataSour
 });
 
         // Initial Message Endpoints
-        app.MapPost("/api/initial-message", async (InitialMessage message, NpgsqlDataSource db) =>
-        {
-            try
-            {
-               await using var cmd = db.CreateCommand(@"
-                    INSERT INTO initial_form_messages (chat_token, sender, message, submitted_at, issue_type, email, form_type)
-                    VALUES (@chat_token, @sender, @message, @submitted_at, @issue_type, @email, @form_type)");
-
-                cmd.Parameters.AddWithValue("chat_token", message.ChatToken);
-                cmd.Parameters.AddWithValue("sender", message.Sender);
-                cmd.Parameters.AddWithValue("message", message.Message);
-                cmd.Parameters.AddWithValue("submitted_at", DateTime.UtcNow);
-                cmd.Parameters.AddWithValue("issue_type", message.IssueType);
-                cmd.Parameters.AddWithValue("email", message.Email);
-                cmd.Parameters.AddWithValue("form_type", message.FormType);
-
-                await cmd.ExecuteNonQueryAsync();
-
-                return Results.Ok(new { message = "Initial message created" });
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new { message = "Could not create initial message", error = ex.Message });
-            }
-        });
-
-         // Hämta första meddelandet från formulär via chatToken
-        app.MapGet("/api/initial-message/{chatToken}", async (string chatToken, NpgsqlDataSource db) =>
-        {
-            try
-            {
-               await using var cmd = db.CreateCommand(@"
-                    SELECT chat_token, sender, message, submitted_at, issue_type, email, form_type 
-                    FROM initial_form_messages 
-                    WHERE chat_token = @chat_token");
-
-                cmd.Parameters.AddWithValue("chat_token", chatToken);
-
-                await using var reader = await cmd.ExecuteReaderAsync();
-                if (await reader.ReadAsync())
-                {
-                    var initialMessage = new
-                    {
-                        chatToken = reader.GetString(0),
-                        sender = reader.GetString(1),
-                        message = reader.GetString(2),
-                        submittedAt = reader.GetDateTime(3),
-                        issueType = reader.GetString(5),
-                        formType = reader.GetString(6)
-                    };
-
-                    return Results.Ok(initialMessage);
-                }
-
-                return Results.NotFound("No initial message found with this chat token");
-            }
-            catch (Exception ex)
-            {
-                return Results.BadRequest(new { message = "Could not fetch initial message", error = ex.Message });
-            }
-        });
+      
+        
               
         // Tickets endpoint
         app.MapGet("/api/tickets", async (NpgsqlDataSource db) => // Mappar GET-begäran för att hämta ärenden
