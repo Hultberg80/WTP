@@ -4,7 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Npgsql;
 using Microsoft.AspNetCore.Http.Json;
-using server.Extensions;
 using server.Records;
 
 namespace server;
@@ -148,11 +147,8 @@ public class Program // Deklarerar huvudklassen Program
         });
         
         app.MapGet("/api/login", (Func<HttpContext, Task<IResult>>)GetLogin);
-        app.MapPost("/api/login", (Func<HttpContext, LoginRequest, NpgsqlDataSource, Task<IResult>>)Login);
+        app.MapPost("/api/newlogin", Login);
         app.MapDelete("/api/login", (Func<HttpContext, Task<IResult>>)Logout);
-        
-        app.MapGet("/api/admin/data", () => "This is very secret admin data here..").RequireRole("Admin"); // Innan funktionen körs kollar den på required role.
-        app.MapGet("/api/user/data", () => "This is data that users can look at. Its not very secret").RequireRole("User");
         
         static async Task<IResult> GetLogin(HttpContext context)
         {
@@ -190,13 +186,11 @@ public class Program // Deklarerar huvudklassen Program
                     {
                         Id = reader.GetInt32(reader.GetOrdinal("Id")),
                         Email = reader.GetString(reader.GetOrdinal("email")),
-                        Company = reader.GetString(reader.GetOrdinal("company")),
-                        Role = reader.GetString(reader.GetOrdinal("role")),
+                        
                     };
-                    
                     context.Session.SetString("userEmail", user.Email);
-                    context.Session.SetString("userCompany", user.Company);
-                    context.Session.SetString("userRole", user.Role);
+                    
+                    
                     
                     return Results.Ok(user);
                 }
