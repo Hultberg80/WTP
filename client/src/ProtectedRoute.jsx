@@ -12,10 +12,10 @@ function ProtectedRoute({ allowedRoles = [] }) {
 
   // Map role_id to role names for comparison
   // Based on your backend where:
-  // role_id 1 = user
+  // role_id 1 = staff (regular user)
   // role_id 2 = admin
   const roleMap = {
-    1: 'user',
+    1: 'staff',
     2: 'admin'
   };
   
@@ -26,7 +26,7 @@ function ProtectedRoute({ allowedRoles = [] }) {
     // Redirect to an appropriate route based on user's role
     if (userRole === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
-    } else if (userRole === 'user') {
+    } else if (userRole === 'staff') {
       return <Navigate to="/staff/dashboard" replace />;
     } else {
       // Default fallback if user has an unrecognized role

@@ -25,7 +25,7 @@ function AuthStatus() {
       <div className="auth-user-info">
         <span className="auth-user-name">{currentUser?.username || 'User'}</span>
         <span className="auth-user-role">
-          {currentUser?.role_id === 2 ? 'Admin' : currentUser?.role_id === 1 ? 'User' : 'Unknown role'}
+          {currentUser?.role_id === 2 ? 'Admin' : currentUser?.role_id === 1 ? 'Staff' : 'Unknown role'}
         </span>
       </div>
       <button onClick={handleLogout} className="auth-logout-button">

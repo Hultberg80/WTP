@@ -4,7 +4,8 @@ import Layout from './Layout';
 import DynamiskForm from './DynamiskForm';
 import AdminCreateUser from './pages/AdminCreateUser';
 import AdminDashboard from './pages/AdminDashboard';
-import StaffDashboard from './pages/StaffDashboard/Header';
+// Fixed import - Main component instead of Header
+import StaffDashboard from './pages/StaffDashboard/Main';
 import StaffLogin from './pages/StaffLogin';
 import Faq from './pages/Faq';
 import UpdateUserInfo from './pages/UpdatePassword';
@@ -60,12 +61,12 @@ function App() {
           <Route path="staff/login" element={<StaffLogin />} />
           
           {/* Protected Staff/User Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'user']} />}>
-            <Route path="staff">
-              <Route path="dashboard" element={<StaffDashboard />} />
-              <Route path="update-user" element={<UpdateUserInfo />} />
-            </Route>
-          </Route>
+<Route element={<ProtectedRoute allowedRoles={['admin', 'staff']} />}>
+  <Route path="staff">
+    <Route path="dashboard" element={<StaffDashboard />} />
+    <Route path="update-password" element={<UpdateUserInfo />} />
+  </Route>
+</Route>
           
           <Route path="faq" element={<Faq />} />
         </Route>
