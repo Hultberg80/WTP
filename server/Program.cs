@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Npgsql;
 using Microsoft.AspNetCore.Http.Json;
+using server.Extensions;
+using server.Records;
 
 namespace server;
 
@@ -38,6 +40,15 @@ public class Program // Deklarerar huvudklassen Program
         builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
 
         var app = builder.Build(); // Bygger WebApplication-instansen
+        
+        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSession(options =>
+        {
+            options.IdleTimeout = TimeSpan.FromMinutes(20);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+        });
+
 
         if (app.Environment.IsDevelopment()) // Kontrollerar om miljön är utvecklingsmiljö
         {
@@ -45,6 +56,7 @@ public class Program // Deklarerar huvudklassen Program
             app.UseSwaggerUI(); // Aktiverar Swagger UI
         }
         
+        app.UseSession();
         app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
         app.UseAuthentication(); // Aktiverar autentisering
         app.UseAuthorization(); // Aktiverar auktorisering
@@ -136,8 +148,73 @@ public class Program // Deklarerar huvudklassen Program
             }
         });
         
+        app.MapGet("/api/login", (Func<HttpContext, Task<IResult>>)GetLogin);
+        app.MapPost("/api/login", (Func<HttpContext, LoginRequest, NpgsqlDataSource, Task<IResult>>)Login);
+        app.MapDelete("/api/login", (Func<HttpContext, Task<IResult>>)Logout);
         
+        app.MapGet("/api/admin/data", () => "This is very secret admin data here..").RequireRole("Admin");
+        app.MapGet("/api/user/data", () => "This is data that users can look at. Its not very secret").RequireRole("User");
         
+        static async Task<IResult> GetLogin(HttpContext context)
+        {
+            Console.WriteLine("GetSession is called..Getting session");
+            var key = await Task.Run(() => context.Session.GetString("User"));
+            if (key == null)
+            {
+                return Results.NotFound(new { message = "No one is logged in." });
+            }
+            var user = JsonSerializer.Deserialize<UserForm>(key);
+            Console.WriteLine("user: " + user);
+            return Results.Ok(user);
+        }
+        
+        static async Task<IResult> Login(HttpContext context, LoginRequest request, NpgsqlDataSource db)
+        {
+            if (context.Session.GetString("User") != null)
+            {
+                return Results.BadRequest(new { message = "Someone is already logged in." });
+            }
+            Console.WriteLine("SetSession is called..Setting session");
+
+            await using var cmd = db.CreateCommand(@"SELECT u.""Id"" as id, u.email, r.company_role as role
+                                                                    FROM users u
+                                                                    JOIN role r ON u.role_id = r.id
+                                                                    WHERE u.email = @email AND u.password = @password");
+            cmd.Parameters.AddWithValue("@email", request.Email);
+            cmd.Parameters.AddWithValue("@password", request.Password);
+
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                if (reader.HasRows)
+                {
+                    await reader.ReadAsync();
+
+                    UserForm user = new UserForm
+                    {
+                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                        Email = reader.GetString(reader.GetOrdinal("email")),
+                        Role = reader.GetString(reader.GetOrdinal("role")),
+                    };
+                    
+                        await Task.Run(() => context.Session.SetString("User", JsonSerializer.Serialize(user)));
+                        return Results.Ok(new { email = user.Email, role = user.Role });
+                }
+            }
+            
+
+            return Results.NotFound(new { message = "No user found." });
+        }
+        
+        static async Task<IResult> Logout(HttpContext context)
+        {
+            if (context.Session.GetString("User") == null)
+            {
+                return Results.Conflict(new { message = "No login found." });
+            }
+            Console.WriteLine("ClearSession is called..Clearing session");
+            await Task.Run(context.Session.Clear);
+            return Results.Ok(new { message = "Logged out." });
+        }
         
 
         // User Endpoints
