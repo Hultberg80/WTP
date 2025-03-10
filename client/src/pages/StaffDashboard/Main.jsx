@@ -1,6 +1,7 @@
 // Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
 import { useState, useEffect } from "react";
 import Aside from "./Aside";
+import ChatLink from "../../ChatLink"; // Import the ChatLink component
 
 // Definierar huvudkomponenten för applikationen
 function Main() {
@@ -33,6 +34,7 @@ function Main() {
           ...ticket,
           issueType: `${ticket.sender} - ${ticket.formType}`,
           wtp: ticket.formType,
+          chatToken: ticket.chatToken, // Store the token directly
           chatLink: `http://localhost:3001/chat/${ticket.chatToken}`}));
       
         setTasks(newData)
@@ -136,14 +138,10 @@ function Main() {
                             {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
                         </div>
                             <div className="ticket-task-token">
-                                
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
+                                {/* Replace regular link with ChatLink component */}
+                                <ChatLink chatToken={task.chatToken}>
                                     Öppna chatt
-                                </a>
+                                </ChatLink>
                             </div>
                         </div>
                     </div>
@@ -181,14 +179,10 @@ function Main() {
                             {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
                         </div>
                             <div className="ticket-task-token">
-                               
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
+                                {/* Replace regular link with ChatLink component */}
+                                <ChatLink chatToken={task.chatToken}>
                                     Öppna chatt
-                                </a>
+                                </ChatLink>
                             </div>
                         </div>
                     </div>
@@ -225,14 +219,10 @@ function Main() {
                             {formatDate(task.submittedAt  || task.timestamp || task.createdAt)}
                         </div>
                             <div className="ticket-task-token">
-                               
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
+                                {/* Replace regular link with ChatLink component */}
+                                <ChatLink chatToken={task.chatToken}>
                                     Öppna chatt
-                                </a>
+                                </ChatLink>
                             </div>
                         </div>
                     </div>

@@ -226,11 +226,12 @@ public class Program // Deklarerar huvudklassen Program
                 // Determine role_id based on role
                 int roleId = user.Role?.ToLower() switch
                 {
-                    "admin" => 2,
-                    "user" => 1,
-                    "staff" => 1,
-                    _ => 1 // Default to staff
+                    "admin" => 3,    // Super-admin
+                    "user" => 2,     // Företags-admin
+                    "staff" => 1,    // Kundtjänst
+                    _ => 1           // Default to staff
                 };
+
 
                 user.CreatedAt = DateTime.UtcNow;
                await using var cmd = db.CreateCommand(@"
@@ -242,7 +243,7 @@ public class Program // Deklarerar huvudklassen Program
                 cmd.Parameters.AddWithValue("password", user.Password);
                 cmd.Parameters.AddWithValue("company", user.Company);
                 cmd.Parameters.AddWithValue("created_at", user.CreatedAt);
-                cmd.Parameters.AddWithValue("role_id", 1);
+                cmd.Parameters.AddWithValue("role_id", roleId);
                 cmd.Parameters.AddWithValue("email", user.Email);
 
                await using var reader = await cmd.ExecuteReaderAsync();

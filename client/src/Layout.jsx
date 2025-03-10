@@ -48,12 +48,7 @@ function Layout() {
               {/* Admin NavLinks */}
               <div>
                 <h2>Admin</h2>
-                <NavLink 
-                  to={"/admin/login"}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Admin Login
-                </NavLink>
+                
 
                 <NavLink 
                   to={"/admin/dashboard"} 
@@ -77,7 +72,7 @@ function Layout() {
                   to={"/staff/login"}
                   onClick={() => setMenuOpen(false)}
                 >
-                  Staff Login
+                  Login
                 </NavLink>
                 <NavLink 
                   to={"/staff/dashboard"}

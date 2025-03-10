@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ChatLink from '../ChatLink'; // Import ChatLink component
 
 function UserAndTicketPage() {
   const [users, setUsers] = useState([]);
@@ -58,7 +59,7 @@ function UserAndTicketPage() {
       const data = await response.json();
       // Transform the data to match the API response
       const transformedTickets = Array.isArray(data) ? data.map(ticket => ({
-        chatToken: `http://localhost:3001/chat/${ticket.chatToken}`,
+        chatToken: ticket.chatToken,
         sender: ticket.sender,
         message: ticket.message,
         timestamp: ticket.timestamp,
@@ -265,9 +266,10 @@ function UserAndTicketPage() {
               {filteredTickets.length > 0 ? filteredTickets.map((ticket) => (
                 <tr key={ticket.chatToken}>
                   <td>
-                    <a href={ticket.chatToken} target="_blank" rel="noopener noreferrer">
+                    {/* Replace regular link with ChatLink component */}
+                    <ChatLink chatToken={ticket.chatToken}>
                       Open Chat
-                    </a>
+                    </ChatLink>
                   </td>
                   <td>{ticket.sender}</td>
                   <td>{ticket.issueType}</td>
