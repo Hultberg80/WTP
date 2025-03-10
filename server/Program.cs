@@ -170,35 +170,33 @@ public class Program // Deklarerar huvudklassen Program
             {
                 return Results.BadRequest(new { message = "Someone is already logged in." });
             }
-            Console.WriteLine("SetSession is called..Setting session");
 
             await using var cmd =
-                db.CreateCommand("SELECT * FROM users WHERE email = @email and password = @password");
+                db.CreateCommand("SELECT users.\"Id\" as \"id\", users.first_name, users.company, users.role_id, users.email FROM users WHERE email = @email and password = @password");
             cmd.Parameters.AddWithValue("@email", request.Email);
             cmd.Parameters.AddWithValue("@password", request.Password);
 
             await using (var reader = await cmd.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
-
                 {
                     UserForm user = new UserForm
                     {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        Email = reader.GetString(reader.GetOrdinal("email")),
-                        
+                        Id = reader.GetInt32(0),
+                        FirstName = reader.GetString(1),
+                        Company = reader.GetString(2),
+                        Role = reader.GetInt32(3) == 1 ? "staff" : "admin",
+                        Email = reader.GetString(4)
                     };
                     context.Session.SetString("userEmail", user.Email);
-                    
-                    
-                    
+            
                     return Results.Ok(user);
                 }
             }
-            
 
             return Results.NotFound(new { message = "No user found." });
         }
+
         
         static async Task<IResult> Logout(HttpContext context)
         {
