@@ -1,92 +1,99 @@
-// Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
 import { useState, useEffect } from "react";
 import Aside from "./Aside";
+import { useGlobal } from "../../GlobalContext"; // Import the global context hook
 
-// Definierar huvudkomponenten för applikationen
+// Main dashboard component for staff members
 function Main() {
-    // State för alla ärenden/tasks
-    const render_again = false;
-    const [tasks, setTasks] = useState([]);
-    // State för användarens egna ärenden
-    const [myTasks, setMyTasks] = useState([]);
-    // State för färdiga ärenden
-    const [done, setDone] = useState([]);
-    // State för att hålla koll på vilket ärende som dras
-    const [draggedTask, setDraggedTask] = useState(null);
-
-
-    useEffect(fetchAllTickets, []);
-	function printFetchError(error)
-	{
-			console.error("failed to fetch tickets: "+error);
-	}
-
-    function fetchAllTickets()
-	  {
-      console.log("fetching tickets");
-		  try
-		  {
-			fetch("/api/tickets", { credentials: "include" })
-			.then(response => response.json(), printFetchError)
-			.then(data => {
-        let newData = data.map(ticket => ({
-          ...ticket,
-          issueType: `${ticket.sender} - ${ticket.formType}`,
-          wtp: ticket.formType,
-          chatLink: `http://localhost:3001/chat/${ticket.chatToken}`}));
-      
-        setTasks(newData)
-      
-      }, printFetchError)
-		}
-		catch
-		{
-			console.error("failed to fetch tickets");
-		}
-
-    }
-
-
-
-    // Funktion för att uppdatera ärendelistan med ny data
+    // State for ticket organization and drag-and-drop
+    const [pendingTickets, setPendingTickets] = useState([]);
+    const [myTickets, setMyTickets] = useState([]);
+    const [completedTickets, setCompletedTickets] = useState([]);
+    const [draggedTicket, setDraggedTicket] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     
-    // Funktion som körs när man börjar dra ett ärende
-    function handleDragStart(task){
-        setDraggedTask(task);
-    };
+    // Get the current user from global context
+    const { currentUser } = useGlobal();
 
-    // Funktion som körs när man släpper ett ärende i en ny kolumn
-    const handleDrop = (setTargetColumn, targetColumn) => {
-        if (draggedTask) {
-            // Tar bort ärendet från alla kolumner
-            setTasks(prev => prev.filter(task => task.id !== draggedTask.id));
-            setMyTasks(prev => prev.filter(task => task.id !== draggedTask.id));
-            setDone(prev => prev.filter(task => task.id !== draggedTask.id));
+    // Fetch tickets on component mount
+    useEffect(() => {
+        fetchCompanyTickets();
+    }, [currentUser]);
 
-            // Lägger till ärendet i målkolumnen
-            setTargetColumn(prev => [...prev, draggedTask]);
-            // Återställer draggedTask
-            setDraggedTask(null);
+    // Function to fetch tickets specific to the staff member's company
+    const fetchCompanyTickets = async () => {
+        if (!currentUser) return;
+        
+        try {
+            setLoading(true);
+            setError(null);
+            
+            // Use your existing /api/tickets endpoint
+            const response = await fetch(`/api/tickets`);
+            
+            if (!response.ok) {
+                throw new Error(`Error fetching tickets: ${response.status}`);
+            }
+            
+            const tickets = await response.json();
+            
+            // Filter tickets based on company (formType matching staff's company)
+            const companyTickets = tickets.filter(ticket => 
+                ticket.formType?.toLowerCase() === currentUser.company?.toLowerCase()
+            );
+            
+            // Initialize ticket columns 
+            // In a real app, you might want to store status in the database
+            // For now, we'll just show all tickets in the pending column
+            setPendingTickets(companyTickets);
+            setMyTickets([]);
+            setCompletedTickets([]);
+            
+        } catch (error) {
+            console.error("Error fetching company tickets:", error);
+            setError(error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
-    // Förhindrar standardbeteende vid drag-over
-    function handleDragOver(e){e.preventDefault()};
-
-    // Funktion för att hantera redigering av ärenden
-    function handleTaskEdit(taskId, newContent, setColumn){
-        setColumn(prev => prev.map(task =>
-            task.id === taskId
-                ? { ...task, content: newContent }
-                : task
-        ));
+    // Handle starting the drag of a ticket
+    const handleDragStart = (ticket) => {
+        setDraggedTicket(ticket);
     };
 
-    // Funktion för att formatera datum enligt svenskt format
-    function formatDate (dateString){
-        if (!dateString) return "Inget datum";
+    // Prevent default behavior during drag over
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    // Handle dropping a ticket in a new column
+    const handleDrop = (targetColumn) => {
+        if (!draggedTicket) return;
+        
+        // Remove from all columns
+        setPendingTickets(prev => prev.filter(t => t.chatToken !== draggedTicket.chatToken));
+        setMyTickets(prev => prev.filter(t => t.chatToken !== draggedTicket.chatToken));
+        setCompletedTickets(prev => prev.filter(t => t.chatToken !== draggedTicket.chatToken));
+        
+        // Add to target column
+        if (targetColumn === 'pending') {
+            setPendingTickets(prev => [...prev, draggedTicket]);
+        } else if (targetColumn === 'in_progress') {
+            setMyTickets(prev => [...prev, draggedTicket]);
+        } else if (targetColumn === 'completed') {
+            setCompletedTickets(prev => [...prev, draggedTicket]);
+        }
+        
+        // Reset dragged ticket
+        setDraggedTicket(null);
+    };
+
+    // Format date in a user-friendly way
+    const formatDate = (dateString) => {
+        if (!dateString) return "No date";
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return "Ogiltigt datum";
+        if (isNaN(date.getTime())) return "Invalid date";
         return date.toLocaleString('sv-SE', {
             year: 'numeric',
             month: 'numeric',
@@ -96,151 +103,76 @@ function Main() {
         });
     };
 
+    // Render a ticket item
+    const renderTicketItem = (ticket, column) => (
+        <div
+            key={ticket.chatToken}
+            draggable
+            onDragStart={() => handleDragStart(ticket)}
+            className="ticket-task-item"
+        >
+            <div className="ticket-task-content">
+                {ticket.sender} - {ticket.issueType || 'No issue type'}
+            </div>
+            <div className="ticket-task-details">
+                <div className="ticket-task-email">{ticket.email}</div>
+                <div className="ticket-task-time">
+                    {formatDate(ticket.timestamp)}
+                </div>
+                <div className="ticket-task-token">
+                    <a href={`/chat/${ticket.chatToken}`}>
+                        Open Chat
+                    </a>
+                </div>
+                {ticket.message && (
+                    <div className="ticket-task-message truncate-text">
+                        {ticket.message}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
-
-    // Huvudvy för applikationen
     return (
-        // Huvudcontainer
         <div className="main-container">
-            
             <Aside />
 
-            
             <div
                 className="ticket-tasks"
                 onDragOver={handleDragOver}
-                onDrop={() => handleDrop(setTasks, tasks)}
+                onDrop={() => handleDrop('pending')}
             >
-                <h2 className="ticket-tasks-header">Ärenden</h2>
-                {tasks.map((task) => (
-                    // Container för varje ärende
-                    <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
-                    >
-                        
-                        <div className="ticket-task-content"
-                            contentEditable
-                            suppressContentEditableWarning={true}
-                            onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setTasks)}
-                        >
-                            {task.issueType}
-                        </div>
-                        
-                        <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
-                            <div className="ticket-task-email">{task.email}</div>
-                        <div className="ticket-task-time">
-                            {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
-                        </div>
-                            <div className="ticket-task-token">
-                                
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Öppna chatt
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                <h2 className="ticket-tasks-header">New Tickets</h2>
+                {loading ? (
+                    <div className="loading-indicator">Loading tickets...</div>
+                ) : error ? (
+                    <div className="error-message">{error}</div>
+                ) : pendingTickets.length === 0 ? (
+                    <div className="no-tickets">No tickets available</div>
+                ) : (
+                    pendingTickets.map(ticket => renderTicketItem(ticket, 'pending'))
+                )}
             </div>
 
-            
             <div
                 className="ticket-my-tasks"
                 onDragOver={handleDragOver}
-                onDrop={() => handleDrop(setMyTasks, myTasks)}
+                onDrop={() => handleDrop('in_progress')}
             >
-                <h2 className="ticket-my-tasks-header">Mina ärenden</h2>
-                {myTasks.map((task) => (
-                    
-                    <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
-                    >
-                        
-                        <div className="ticket-task-content"
-                            contentEditable
-                            suppressContentEditableWarning={true}
-                            onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setMyTasks)}
-                        >
-                            {task.issueType}
-                        </div>
-                        
-                        <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
-                            <div className="ticket-task-email">{task.email}</div>
-                        <div className="ticket-task-time">
-                            {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
-                        </div>
-                            <div className="ticket-task-token">
-                               
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Öppna chatt
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                <h2 className="ticket-my-tasks-header">In Progress</h2>
+                {myTickets.map(ticket => renderTicketItem(ticket, 'in_progress'))}
             </div>
 
-           
             <div
                 className="ticket-done"
                 onDragOver={handleDragOver}
-                onDrop={() => handleDrop(setDone, done)}
+                onDrop={() => handleDrop('completed')}
             >
-                <h2 className="ticket-done-header">Klara</h2>
-                {done.map((task) => (
-                    
-                    <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
-                    >
-                        
-                        <div className="ticket-task-content"
-                            contentEditable
-                            suppressContentEditableWarning={true}
-                            onBlur={(e) => handleTaskEdit(task.id, e.currentTarget.textContent, setDone)}
-                        >
-                            {task.issueType}
-                        </div>
-                        
-                        <div className="ticket-task-details">
-                            <div className="ticket-wtp">{task.wtp}</div>
-                        <div className="ticket-task-time">
-                            {formatDate(task.submittedAt  || task.timestamp || task.createdAt)}
-                        </div>
-                            <div className="ticket-task-token">
-                               
-                                <a
-                                    href={task.chatLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    Öppna chatt
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                <h2 className="ticket-done-header">Completed</h2>
+                {completedTickets.map(ticket => renderTicketItem(ticket, 'completed'))}
             </div>
         </div>
     );
 }
 
-// Exporterar Main-komponenten som default export
 export default Main;

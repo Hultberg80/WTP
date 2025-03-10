@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useGlobal } from '../GlobalContext'; // Import the global context hook
 
 function UpdateUserInfo() {
   const [formData, setFormData] = useState({
@@ -9,6 +10,9 @@ function UpdateUserInfo() {
 
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Get current user and update function from global context
+  const { currentUser, updateUser } = useGlobal();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,20 +26,22 @@ function UpdateUserInfo() {
     }
 
     try {
-      const response = await fetch('/api/users/update', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          password: formData.password
-        })
-      });
+      if (!currentUser || !currentUser.id) {
+        throw new Error('Du måste vara inloggad för att uppdatera lösenordet');
+      }
+      
+      const updateData = {
+        password: formData.password
+      };
+      
+      // Only include firstName if it's provided
+      if (formData.firstName.trim()) {
+        updateData.firstName = formData.firstName;
+      }
+      
+      const result = await updateUser(currentUser.id, updateData);
 
-      const result = await response.json();
-
-      if (response.ok) {
+      if (result.success) {
         setMessage('Uppgifterna uppdaterades framgångsrikt!');
         setFormData({
           firstName: '',
@@ -43,10 +49,10 @@ function UpdateUserInfo() {
           confirmPassword: ''
         });
       } else {
-        setMessage(result.message || 'Ett fel uppstod vid uppdateringen');
+        setMessage(result.error || 'Ett fel uppstod vid uppdateringen');
       }
     } catch (error) {
-      setMessage('Ett fel uppstod vid anslutning till servern');
+      setMessage(error.message || 'Ett fel uppstod vid anslutning till servern');
     } finally {
       setIsSubmitting(false);
     }
@@ -81,6 +87,7 @@ function UpdateUserInfo() {
           value={formData.password}
           onChange={handleInputChange}
           className="login-bar"
+          required
         />
 
         <input
@@ -90,10 +97,11 @@ function UpdateUserInfo() {
           value={formData.confirmPassword}
           onChange={handleInputChange}
           className="login-bar"
+          required
         />
 
         {message && (
-          <div className={message.includes('fel') ? 'error-message' : 'success-message'}>
+          <div className={message.includes('fel') || message.includes('matchar') ? 'error-message' : 'success-message'}>
             {message}
           </div>
         )}

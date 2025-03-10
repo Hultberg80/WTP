@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useGlobal } from '../GlobalContext'; // Import the global context hook
 
 function AdminCreateUser() {
   const [formData, setFormData] = useState({
@@ -11,6 +12,9 @@ function AdminCreateUser() {
 
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Use the global context for shared functions
+  const { createUser, triggerRefresh } = useGlobal();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,27 +24,15 @@ function AdminCreateUser() {
     console.log('Submitting form data:', formData);
 
     try {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          password: formData.password,
-          company: formData.company,
-          role: formData.role,
-          email: formData.email,
-        })
+      const result = await createUser({
+        firstName: formData.firstName,
+        password: formData.password,
+        company: formData.company,
+        role: formData.role,
+        email: formData.email,
       });
 
-      // Log raw response for debugging
-      console.log('Response status:', response.status);
-      
-      const result = await response.json();
-      console.log('Response body:', result);
-
-      if (response.ok) {
+      if (result.success) {
         setMessage('Användare skapades framgångsrikt!');
         setFormData({
           email: '',
@@ -49,13 +41,14 @@ function AdminCreateUser() {
           company: '',
           role: 'staff',
         });
+        
+        // Refresh the users list
+        triggerRefresh('users');
       } else {
-        // Log and display detailed error
-        console.error('Error response:', result);
-        setMessage(result.message || JSON.stringify(result));
+        setMessage(result.error || 'Ett fel uppstod vid skapandet av användaren');
       }
     } catch (error) {
-      console.error('Fetch error:', error);
+      console.error('Error creating user:', error);
       setMessage('Ett fel uppstod vid anslutning till servern.');
     } finally {
       setIsSubmitting(false);

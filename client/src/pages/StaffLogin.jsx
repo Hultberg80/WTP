@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useGlobal } from '../GlobalContext'; // Import the global context hook
 import './StaffLogin.css';
 
 function StaffLogin() {
@@ -6,17 +8,40 @@ function StaffLogin() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  const navigate = useNavigate();
+  
+  // Use the global context for authentication
+  const { login } = useGlobal();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate login request
-    setTimeout(() => {
-      console.log("Staff login:", { username, password, rememberMe });
+    try {
+      const result = await login(username, password, rememberMe);
+      
+      if (result.success) {
+        // Redirect to the appropriate dashboard based on user role_id
+        const roleId = result.user.role_id;
+        if (roleId === 2) { // Admin
+          navigate('/admin/dashboard');
+        } else if (roleId === 1) { // User
+          navigate('/staff/dashboard');
+        } else {
+          navigate('/');
+        }
+      } else {
+        setError(result.error || 'Inloggningen misslyckades. Kontrollera dina uppgifter.');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Ett fel uppstod vid inloggning. Försök igen senare.');
+    } finally {
       setIsLoading(false);
-      // Add actual login logic here
-    }, 1500);
+    }
   };
 
   return (
@@ -28,6 +53,12 @@ function StaffLogin() {
         </div>
         
         <form onSubmit={handleLogin} className="staff-login-form">
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+          
           <div className="staff-field-group">
             <label className="staff-field-label">Användarnamn</label>
             <input
@@ -94,5 +125,4 @@ function StaffLogin() {
   );
 }
       
-
 export default StaffLogin;

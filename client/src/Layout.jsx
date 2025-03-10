@@ -1,9 +1,12 @@
 // Layout.jsx
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { useGlobal } from './GlobalContext'; // Import the global context hook
+import AuthStatus from './AuthStatus'; // Import the auth status component
 
 function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isAuthenticated, currentUser } = useGlobal();
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
@@ -45,68 +48,61 @@ function Layout() {
                 </NavLink>
               </div>
 
-              {/* Admin NavLinks */}
-              <div>
-                <h2>Admin</h2>
-                <NavLink 
-                  to={"/admin/login"}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Admin Login
-                </NavLink>
+              {/* Admin NavLinks - only show if user is authenticated and has admin role */}
+              {isAuthenticated && currentUser?.role_id === 2 && (
+                <div>
+                  <h2>Admin</h2>
 
-                <NavLink 
-                  to={"/admin/dashboard"} 
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Dashboard
-                </NavLink>
+                  <NavLink 
+                    to={"/admin/dashboard"} 
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Dashboard
+                  </NavLink>
 
-                <NavLink 
-                  to={"/admin/create-user"}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Create User
-                </NavLink>
-              </div>
+                  <NavLink 
+                    to={"/admin/create-user"}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Create User
+                  </NavLink>
+                </div>
+              )}
 
-              {/* Staff NavLinks */}
+              {/* Staff NavLinks - show login to unauthenticated users, show dashboard to authenticated staff/admin */}
               <div>
                 <h2>Staff</h2>
-                <NavLink 
-                  to={"/staff/login"}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Staff Login
-                </NavLink>
-                <NavLink 
-                  to={"/staff/dashboard"}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Dashboard
-                </NavLink>
+                
+                {!isAuthenticated ? (
+                  <NavLink 
+                    to={"/staff/login"}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Login
+                  </NavLink>
+                ) : (
+                  <>
+                    <NavLink 
+                      to={"/staff/dashboard"}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Dashboard
+                    </NavLink>
 
-                <NavLink 
-                  to={"/staff/update-user"}
-                >
-                  Update password
-                </NavLink>
-
+                    <NavLink 
+                      to={"/staff/update-user"}
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Update password
+                    </NavLink>
+                  </>
+                )}
               </div>
-
-              {/* Chat */}
-              <NavLink 
-                to={"chat"}
-                onClick={() => setMenuOpen(false)}
-              >
-                Chat
-              </NavLink>
             </div>
-            {/* Login icon on the right */}
+            
+            {/* Auth status indicator on the right */}
             <div className="navbar-right">
-              <a href="">
-                <img src="/img/login.png" alt="Logga in" className="login-img"/>
-              </a>
+              <AuthStatus />
             </div>
           </div>
         </div>

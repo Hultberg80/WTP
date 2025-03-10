@@ -1,81 +1,32 @@
 import { useState, useEffect } from 'react';
+import { useGlobal } from '../GlobalContext'; // Import the global context hook
 
 function UserAndTicketPage() {
-  const [users, setUsers] = useState([]);
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState('');
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [viewMode, setViewMode] = useState('users'); // 'users' or 'tickets'
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Funktion för att hämta alla användare
-  async function fetchUsers() {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/users");
-      
-      if (!response.ok) {
-        // First try to get error as text
-        const errorText = await response.text();
-        console.log('Server error details:', errorText);
-        throw new Error(`Server error: ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Received user data:', data);
-      
-      // Transform the data to match your API response format
-      const transformedUsers = Array.isArray(data) ? data.map(user => ({
-        id: user.id,
-        firstName: user.firstName,
-        company: user.company,
-        role: user.role,
-        email: user.email,
-      })) : [];
-      
-      setUsers(transformedUsers);
-      setError(null);
-    } catch (err) {
-      setError(`Failed to fetch users: ${err.message}`);
-      console.error('Full error details:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-  
+  // Use the global context for shared state and functions
+  const { 
+    users, 
+    tickets, 
+    isLoading, 
+    errors, 
+    fetchUsers, 
+    fetchTickets, 
+    updateUser: updateUserGlobal, 
+    deleteUser: deleteUserGlobal,
+    triggerRefresh
+  } = useGlobal();
 
-  // Funktion för att hämta alla ärenden
-  async function fetchTickets() {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/tickets");
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch tickets');
-      }
-      
-      const data = await response.json();
-      // Transform the data to match the API response
-      const transformedTickets = Array.isArray(data) ? data.map(ticket => ({
-        chatToken: `http://localhost:3001/chat/${ticket.chatToken}`,
-        sender: ticket.sender,
-        message: ticket.message,
-        timestamp: ticket.timestamp,
-        issueType: ticket.issueType,
-        formType: ticket.formType
-      })) : [];
-      
-      setTickets(transformedTickets);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-      console.error('Error fetching tickets:', err);
-    } finally {
-      setLoading(false);
+  // Körs när komponenten laddas eller viewMode ändras
+  useEffect(() => {
+    if (viewMode === 'users') {
+      triggerRefresh('users');
+    } else {
+      triggerRefresh('tickets');
     }
-  }
-  
+  }, [viewMode, triggerRefresh]);
 
   // Funktion för att uppdatera en användare
   async function updateUser(userId, user) {
@@ -92,25 +43,13 @@ function UserAndTicketPage() {
     };
   
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(updatedUserData)
-      });
-  
-      if (!response.ok) {
-        throw new Error("Något gick fel vid uppdatering av användaren");
+      const result = await updateUserGlobal(userId, updatedUserData);
+      
+      if (result.success) {
+        alert(result.message || 'Användaren uppdaterades');
+      } else {
+        throw new Error(result.error);
       }
-  
-      const result = await response.json();
-      alert(result.message);
-  
-      // Update UI with the new data
-      setUsers(prevUsers =>
-        prevUsers.map(u => (u.id === userId ? { ...u, ...updatedUserData } : u))
-      );
     } catch (err) {
       console.error("Fel vid uppdatering av användare:", err);
       alert(`Fel vid uppdatering: ${err.message}`);
@@ -126,39 +65,21 @@ function UserAndTicketPage() {
     try {
       setDeleteLoading(true);
       
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const result = await deleteUserGlobal(userId);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Något gick fel vid borttagning av användaren');
+      if (!result.success) {
+        throw new Error(result.error || 'Något gick fel vid borttagning av användaren');
       }
       
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
       alert('Användaren har tagits bort');
       
     } catch (err) {
       console.error('Delete error details:', err);
-      setError(err.message);
       alert(`Fel vid borttagning: ${err.message}`);
     } finally {
       setDeleteLoading(false);
     }
   }
-  
-  // Körs när komponenten laddas eller viewMode ändras
-  useEffect(() => {
-    if (viewMode === 'users') {
-      fetchUsers();
-    } else {
-      fetchTickets();
-    }
-  }, [viewMode]);
 
   // Filtrerar användare baserat på valt företag
   const filteredUsers = selectedCompany 
@@ -167,8 +88,11 @@ function UserAndTicketPage() {
 
   // Filtrerar ärenden baserat på valt företag om ärendet har ett företagsfält
   const filteredTickets = selectedCompany 
-    ? tickets.filter(ticket => ticket.company === selectedCompany) 
+    ? tickets.filter(ticket => ticket.formType === selectedCompany) 
     : tickets;
+
+  const loading = isLoading.users || isLoading.tickets;
+  const error = errors.users || errors.tickets;
 
   return (
     <div className="page-container">
@@ -203,7 +127,7 @@ function UserAndTicketPage() {
           <option value="forsakring">försäkring</option>
         </select>
         <button 
-          onClick={viewMode === 'users' ? fetchUsers : fetchTickets} 
+          onClick={() => viewMode === 'users' ? triggerRefresh('users') : triggerRefresh('tickets')} 
           className="refresh-button bla"
           disabled={loading}
         >
@@ -229,22 +153,21 @@ function UserAndTicketPage() {
               </tr>
             </thead>
             <tbody>
-{filteredUsers.length > 0 ? filteredUsers.map(user => (
-  <tr key={user.id}>
-    <td>{user.firstName}</td>
-    <td>{user.email}</td>
-    <td>{user.company}</td>
-    <td>{user.role}</td>
-    <td>
-      <button className="edit-button" onClick={() => updateUser(user.id, user)}>Redigera</button>
-      <button className="delete-button" onClick={() => deleteUser(user.id)} disabled={deleteLoading}>Ta bort</button>
-    </td>
-  </tr>
-)) : (
-  <tr><td colSpan="5">Inga användare hittades</td></tr>
-)}
-</tbody>
-
+              {filteredUsers.length > 0 ? filteredUsers.map(user => (
+                <tr key={user.id}>
+                  <td>{user.firstName}</td>
+                  <td>{user.email}</td>
+                  <td>{user.company}</td>
+                  <td>{user.role}</td>
+                  <td>
+                    <button className="edit-button" onClick={() => updateUser(user.id, user)}>Redigera</button>
+                    <button className="delete-button" onClick={() => deleteUser(user.id)} disabled={deleteLoading}>Ta bort</button>
+                  </td>
+                </tr>
+              )) : (
+                <tr><td colSpan="5">Inga användare hittades</td></tr>
+              )}
+            </tbody>
           </table>
         </div>
       ) : (
@@ -265,14 +188,14 @@ function UserAndTicketPage() {
               {filteredTickets.length > 0 ? filteredTickets.map((ticket) => (
                 <tr key={ticket.chatToken}>
                   <td>
-                    <a href={ticket.chatToken} target="_blank" rel="noopener noreferrer">
+                    <a href={`/chat/${ticket.chatToken}`}>
                       Open Chat
                     </a>
                   </td>
                   <td>{ticket.sender}</td>
                   <td>{ticket.issueType}</td>
                   <td>{ticket.formType}</td>
-                  <td>{ticket.message || 'No message'}</td>
+                  <td className="truncate-text">{ticket.message || 'No message'}</td>
                   <td>{new Date(ticket.timestamp).toLocaleString('sv-SE')}</td>
                 </tr>
               )) : (
