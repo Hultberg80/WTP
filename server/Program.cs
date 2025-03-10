@@ -1,6 +1,9 @@
 ﻿using server.Services;
 using server.Models;
 using System.Text.Json;
+using server.Record;
+using server.Extensions;
+using server.Classes;
 using System.Text.Json.Serialization;
 using Npgsql;
 using Microsoft.AspNetCore.Http.Json;
@@ -12,42 +15,67 @@ public class Program // Deklarerar huvudklassen Program
     public static void Main(string[] args) // Deklarerar huvudmetoden Main
     {
         NpgsqlDataSource postgresdb = NpgsqlDataSource.Create("Host=45.10.162.204;Port=5438;Database=test_db;Username=postgres;Password=_FrozenPresidentSmacks!;");
-        var builder = WebApplication.CreateBuilder(args); // Skapar en WebApplicationBuilder
+        var builder = WebApplication.CreateBuilder(args);
         
-        builder.Services.AddEndpointsApiExplorer(); // Lägger till API Explorer för Swagger
-        builder.Services.AddSwaggerGen(); // Lägger till Swagger-generering
-        builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
-        builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
-        builder.Services.AddSingleton <NpgsqlDataSource>(postgresdb);
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGen();
+        builder.Services.AddAuthentication();
+        builder.Services.AddAuthorization();
+        builder.Services.AddSingleton<NpgsqlDataSource>(postgresdb);
         
-        builder.Services.AddCors(options => // Lägger till CORS-stöd
+        // Add session services
+        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSession(options =>
         {
-            options.AddPolicy("AllowReactApp", // Definierar en CORS-policy för React-appen
+            options.IdleTimeout = TimeSpan.FromMinutes(30);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+        });
+        
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowReactApp",
                 builder =>
                 {
                     builder
-                        .WithOrigins( // Anger tillåtna ursprung för CORS
+                        .WithOrigins(
                             "http://localhost:3001",
                             "https://localhost:3001"
                         )
-                        .AllowAnyMethod() // Tillåter alla HTTP-metoder
-                        .AllowAnyHeader(); // Tillåter alla HTTP-headers
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
                 });
         });
 
-        builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
+        builder.Services.AddScoped<IEmailService, EmailService>();
 
-        var app = builder.Build(); // Bygger WebApplication-instansen
+        var app = builder.Build();
 
-        if (app.Environment.IsDevelopment()) // Kontrollerar om miljön är utvecklingsmiljö
+        if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger(); // Aktiverar Swagger
-            app.UseSwaggerUI(); // Aktiverar Swagger UI
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
         
-        app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
-        app.UseAuthentication(); // Aktiverar autentisering
-        app.UseAuthorization(); // Aktiverar auktorisering
+        app.UseCors("AllowReactApp");
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.UseSession(); // Add session middleware
+        
+        // Home endpoint
+        app.MapGet("/", () => "Hello World!");
+        
+        // Session and authentication endpoints
+        app.MapGet("/api/login", async (HttpContext context) => await GetLogin(context));
+        app.MapPost("/api/login", async (HttpContext context, LoginRequest request, NpgsqlDataSource db) => 
+            await Login(context, request, db));
+        app.MapDelete("/api/login", async (HttpContext context) => await Logout(context));
+        
+        // Protected endpoints with direct role_id values
+        app.MapGet("/api/admin/data", () => "This is very secret admin data here..")
+            .RequireRole(2); // Admin role_id = 2
+        app.MapGet("/api/user/data", () => "This is data that users can look at. It's not very secret")
+            .RequireRole(1);
         
         // Lägg till middleware för debugging (kan tas bort i produktion)
        
@@ -647,9 +675,68 @@ app.MapPost("/api/forsakring", async (ForsakringsForm submission, NpgsqlDataSour
                 }); // Returnerar ett BadRequest-resultat vid fel
             }
         });
-
-        app.Run(); // Startar webbservern
+        
+        
+        static async Task<IResult> GetLogin(HttpContext context)
+    {
+        Console.WriteLine("GetSession is called..Getting session");
+        var key = await Task.Run(() => context.Session.GetString("User"));
+        if (key == null)
+        {
+            return Results.NotFound(new { message = "No one is logged in." });
+        }
+        var user = JsonSerializer.Deserialize<User>(key);
+        Console.WriteLine("user: " + user.Username);
+        return Results.Ok(user);
     }
+    
+    static async Task<IResult> Login(HttpContext context, LoginRequest request, NpgsqlDataSource db)
+    {
+        if (context.Session.GetString("User") != null)
+        {
+            return Results.BadRequest(new { message = "Someone is already logged in." });
+        }
+        Console.WriteLine("SetSession is called..Setting session");
+        await using var cmd = db.CreateCommand("SELECT \"Id\", first_name, role_id, email FROM users WHERE email = @email AND password = @password");
+        cmd.Parameters.AddWithValue("@email", request.Username); // Using email as username
+        cmd.Parameters.AddWithValue("@password", request.Password);
+        await using (var reader = await cmd.ExecuteReaderAsync())
+        {
+            if (reader.HasRows)
+            {
+                while (await reader.ReadAsync())
+                {
+                    int id = reader.GetInt32(0);
+                    string firstName = reader.GetString(1);
+                    int roleId = reader.GetInt32(2);
+                    string email = reader.GetString(3);
+                    
+                    User user = new User(id, firstName, roleId);
+                    user.Email = email; // Store email separately
+                    await Task.Run(() => context.Session.SetString("User", JsonSerializer.Serialize(user)));
+                    return Results.Ok(new { username = user.Username, email = user.Email, roleId = user.RoleId });
+                }
+            }
+        }
+        return Results.NotFound(new { message = "No user found." });
+    }
+    
+    static async Task<IResult> Logout(HttpContext context)
+    {
+        if (context.Session.GetString("User") == null)
+        {
+            return Results.Conflict(new { message = "No login found." });
+        }
+        Console.WriteLine("ClearSession is called..Clearing session");
+        await Task.Run(context.Session.Clear);
+        return Results.Ok(new { message = "Logged out." });
+    }
+    
+    app.Run(); // Startar webbservern
+}
+
+        
+
 
     public record GetTicketsDTO(
         string ChatToken,
