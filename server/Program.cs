@@ -38,8 +38,6 @@ public class Program // Deklarerar huvudklassen Program
         });
 
         builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
-
-        var app = builder.Build(); // Bygger WebApplication-instansen
         
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddSession(options =>
@@ -49,7 +47,8 @@ public class Program // Deklarerar huvudklassen Program
             options.Cookie.IsEssential = true;
         });
 
-
+        var app = builder.Build(); // Bygger WebApplication-instansen
+        
         if (app.Environment.IsDevelopment()) // Kontrollerar om miljön är utvecklingsmiljö
         {
             app.UseSwagger(); // Aktiverar Swagger
