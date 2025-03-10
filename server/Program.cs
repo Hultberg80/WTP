@@ -18,11 +18,11 @@ public class Program // Deklarerar huvudklassen Program
         
         builder.Services.AddEndpointsApiExplorer(); // Lägger till API Explorer för Swagger
         builder.Services.AddSwaggerGen(); // Lägger till Swagger-generering
-        builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
-        builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
+        //builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
+        //builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
         builder.Services.AddSingleton <NpgsqlDataSource>(postgresdb);
         
-        builder.Services.AddCors(options => // Lägger till CORS-stöd
+       /* builder.Services.AddCors(options => // Lägger till CORS-stöd
         {
             options.AddPolicy("AllowReactApp", // Definierar en CORS-policy för React-appen
                 builder =>
@@ -35,7 +35,7 @@ public class Program // Deklarerar huvudklassen Program
                         .AllowAnyMethod() // Tillåter alla HTTP-metoder
                         .AllowAnyHeader(); // Tillåter alla HTTP-headers
                 });
-        });
+        });*/
 
         builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
         
@@ -56,9 +56,9 @@ public class Program // Deklarerar huvudklassen Program
         }
         
         app.UseSession();
-        app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
-        app.UseAuthentication(); // Aktiverar autentisering
-        app.UseAuthorization(); // Aktiverar auktorisering
+        //app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
+        //app.UseAuthentication(); // Aktiverar autentisering
+        //app.UseAuthorization(); // Aktiverar auktorisering
         
         // Lägg till middleware för debugging (kan tas bort i produktion)
        
@@ -151,7 +151,7 @@ public class Program // Deklarerar huvudklassen Program
         app.MapPost("/api/login", (Func<HttpContext, LoginRequest, NpgsqlDataSource, Task<IResult>>)Login);
         app.MapDelete("/api/login", (Func<HttpContext, Task<IResult>>)Logout);
         
-        app.MapGet("/api/admin/data", () => "This is very secret admin data here..").RequireRole("Admin");
+        app.MapGet("/api/admin/data", () => "This is very secret admin data here..").RequireRole("Admin"); // Innan funktionen körs kollar den på required role.
         app.MapGet("/api/user/data", () => "This is data that users can look at. Its not very secret").RequireRole("User");
         
         static async Task<IResult> GetLogin(HttpContext context)
@@ -162,6 +162,7 @@ public class Program // Deklarerar huvudklassen Program
             {
                 return Results.NotFound(new { message = "No one is logged in." });
             }
+            
             var user = JsonSerializer.Deserialize<UserForm>(key);
             Console.WriteLine("user: " + user);
             return Results.Ok(user);
@@ -175,28 +176,29 @@ public class Program // Deklarerar huvudklassen Program
             }
             Console.WriteLine("SetSession is called..Setting session");
 
-            await using var cmd = db.CreateCommand(@"SELECT u.""Id"" as id, u.email, r.company_role as role
-                                                                    FROM users u
-                                                                    JOIN role r ON u.role_id = r.id
-                                                                    WHERE u.email = @email AND u.password = @password");
+            await using var cmd =
+                db.CreateCommand("SELECT * FROM users WHERE email = @email and password = @password");
             cmd.Parameters.AddWithValue("@email", request.Email);
             cmd.Parameters.AddWithValue("@password", request.Password);
 
             await using (var reader = await cmd.ExecuteReaderAsync())
             {
-                if (reader.HasRows)
-                {
-                    await reader.ReadAsync();
+                while (await reader.ReadAsync())
 
+                {
                     UserForm user = new UserForm
                     {
                         Id = reader.GetInt32(reader.GetOrdinal("Id")),
                         Email = reader.GetString(reader.GetOrdinal("email")),
+                        Company = reader.GetString(reader.GetOrdinal("company")),
                         Role = reader.GetString(reader.GetOrdinal("role")),
                     };
                     
-                        await Task.Run(() => context.Session.SetString("User", JsonSerializer.Serialize(user)));
-                        return Results.Ok(new { email = user.Email, role = user.Role });
+                    context.Session.SetString("userEmail", user.Email);
+                    context.Session.SetString("userCompany", user.Company);
+                    context.Session.SetString("userRole", user.Role);
+                    
+                    return Results.Ok(user);
                 }
             }
             
