@@ -1,22 +1,35 @@
 import { useState } from 'react';
+
 import './StaffLogin.css';
 
 function StaffLogin() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
+
+
+  const handleLogin = async (event) => {
+    event.preventDefault();
     setIsLoading(true);
+    console.log("Email:" + email + " password: " + password)
+
+    const response = await fetch("/api/newlogin", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({email, password}),
+      credentials: "include"
+    }
+    )
+    if(response.ok){
+      const data = await response.json();
+      console.log(data)
+      setIsLoading(false)
+    }
     
     // Simulate login request
-    setTimeout(() => {
-      console.log("Staff login:", { username, password, rememberMe });
-      setIsLoading(false);
-      // Add actual login logic here
-    }, 1500);
+    
   };
 
   return (
@@ -32,8 +45,8 @@ function StaffLogin() {
             <label className="staff-field-label">Användarnamn</label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="staff-field-input"
               required
             />
