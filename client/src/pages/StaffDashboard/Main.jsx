@@ -1,38 +1,48 @@
-import { useState, useEffect } from "react";
-import Aside from "./Aside";
-import { useGlobal } from "../../GlobalContext"; // Import the global context hook
+import React, { useEffect } from "react";
+import { useGlobal } from "../../GlobalContext";
 
-// Main dashboard component for staff members
-function Main() {
-  const { tickets, isLoading, errors, triggerRefresh, currentUser } = useGlobal();
+function StaffDashboard() {
+  const { tickets, isLoading, errors, triggerRefresh, currentUser, isAuthenticated } = useGlobal();
   
   useEffect(() => {
-    // Manually trigger a refresh of tickets when dashboard loads
-    triggerRefresh('tickets');
+    console.log("Staff Dashboard loading with auth status:", isAuthenticated);
+    console.log("Current user:", currentUser);
     
-    console.log("Staff Dashboard loaded, current user:", currentUser);
-  }, [triggerRefresh, currentUser]);
-  
-  // Rest of your component
+    // Trigger a refresh of tickets when the dashboard loads
+    triggerRefresh('tickets');
+  }, [isAuthenticated, currentUser, triggerRefresh]);
   
   return (
-    <div className="dashboard-container">
+    <div className="staff-dashboard">
       <h1>Staff Dashboard</h1>
+      
+      <div className="debug-info">
+        <h3>Debug Info</h3>
+        <p>Authentication: {isAuthenticated ? 'Yes' : 'No'}</p>
+        <p>User: {currentUser ? JSON.stringify(currentUser) : 'Not logged in'}</p>
+        <p>Loading: {isLoading.tickets ? 'Yes' : 'No'}</p>
+        <p>Error: {errors.tickets || 'None'}</p>
+      </div>
       
       {isLoading.tickets ? (
         <p>Loading tickets...</p>
       ) : errors.tickets ? (
-        <p>Error loading tickets: {errors.tickets}</p>
+        <div className="error-container">
+          <h3>Error loading tickets</h3>
+          <p>{errors.tickets}</p>
+          <button onClick={() => triggerRefresh('tickets')}>Try Again</button>
+        </div>
       ) : tickets.length === 0 ? (
-        <p>No tickets found for your company.</p>
+        <p>No tickets found.</p>
       ) : (
-        <div className="tickets-list">
+        <div className="tickets-container">
+          <h2>Your Tickets</h2>
           {tickets.map(ticket => (
-            <div key={ticket.id} className="ticket-card">
-              <h3>From: {ticket.sender}</h3>
-              <p>Message: {ticket.message}</p>
-              <p>Type: {ticket.issueType}</p>
-              <p>Email: {ticket.email}</p>
+            <div className="ticket" key={ticket.id || ticket._id}>
+              <h3>{ticket.subject || 'No Subject'}</h3>
+              <p><strong>From:</strong> {ticket.sender || 'Unknown'}</p>
+              <p><strong>Message:</strong> {ticket.message || 'No message'}</p>
+              <p><strong>Type:</strong> {ticket.issueType || ticket.issue_type || 'Not specified'}</p>
             </div>
           ))}
         </div>
@@ -41,4 +51,4 @@ function Main() {
   );
 }
 
-export default Main;
+export default StaffDashboard;
