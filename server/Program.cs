@@ -25,48 +25,23 @@ public class Program // Deklarerar huvudklassen Program
     {
         NpgsqlDataSource postgresdb = NpgsqlDataSource.Create("Host=45.10.162.204;Port=5438;Database=test_db;Username=postgres;Password=_FrozenPresidentSmacks!;");
         var builder = WebApplication.CreateBuilder(args); // Skapar en WebApplicationBuilder
-        
-        builder.Services.AddEndpointsApiExplorer(); // Lägger till API Explorer för Swagger
-        builder.Services.AddSwaggerGen(); // Lägger till Swagger-generering
-        builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
-        builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
-        builder.Services.AddSingleton <NpgsqlDataSource>(postgresdb);
-        builder.Services.AddDistributedMemoryCache();
+ 
+ 
+        builder.Services.AddSingleton<NpgsqlDataSource>(postgresdb);
+ 
+        builder.Services.AddDistributedMemoryCache(); // Required for session state
         builder.Services.AddSession(options =>
         {
-            options.IdleTimeout = TimeSpan.FromMinutes(20);
+            options.IdleTimeout = TimeSpan.FromMinutes(30); // Set session timeout
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
         });
-        builder.Services.AddCors(options => // Lägger till CORS-stöd
-        {
-            options.AddPolicy("AllowReactApp", // Definierar en CORS-policy för React-appen
-                builder =>
-                {
-                    builder
-                        .WithOrigins( // Anger tillåtna ursprung för CORS
-                            "http://localhost:3001",
-                            "https://localhost:3001"
-                        )
-                        .AllowAnyMethod() // Tillåter alla HTTP-metoder
-                        .AllowAnyHeader(); // Tillåter alla HTTP-headers
-                });
-        });
-
+ 
+ 
         builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
-
+ 
         var app = builder.Build(); // Bygger WebApplication-instansen
-        app.UseSession();
-        if (app.Environment.IsDevelopment()) // Kontrollerar om miljön är utvecklingsmiljö
-        {
-            app.UseSwagger(); // Aktiverar Swagger
-            app.UseSwaggerUI(); // Aktiverar Swagger UI
-        }
-        
-        app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
-        app.UseAuthentication(); // Aktiverar autentisering
-        app.UseAuthorization(); // Aktiverar auktorisering
-        
+        app.UseSession(); // Required for session state
         // Lägg till middleware för debugging (kan tas bort i produktion)
        
         
