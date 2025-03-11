@@ -20,13 +20,19 @@ function AuthStatus() {
     );
   }
 
+  // Fix the property name mismatch - use roleId instead of role_id
+  let roleName = 'Unknown';
+  if (currentUser?.roleId === 2) {
+    roleName = 'Admin';
+  } else if (currentUser?.roleId === 1) {
+    roleName = 'Staff';
+  }
+
   return (
     <div className="auth-status">
       <div className="auth-user-info">
         <span className="auth-user-name">{currentUser?.username || 'User'}</span>
-        <span className="auth-user-role">
-          {currentUser?.role_id === 2 ? 'Admin' : currentUser?.role_id === 1 ? 'Staff' : 'Unknown role'}
-        </span>
+        <span className="auth-user-role">{roleName}</span>
       </div>
       <button onClick={handleLogout} className="auth-logout-button">
         Logga ut

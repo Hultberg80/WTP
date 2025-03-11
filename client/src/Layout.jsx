@@ -83,14 +83,14 @@ function Layout() {
                 ) : (
                   <>
                     <NavLink 
-                      to={"/staff/dashboard"}
+                      to="/staff/dashboard"
                       onClick={() => setMenuOpen(false)}
                     >
                       Dashboard
                     </NavLink>
 
                     <NavLink 
-                      to={"/staff/update-user"}
+                      to="/staff/update-password"
                       onClick={() => setMenuOpen(false)}
                     >
                       Update password

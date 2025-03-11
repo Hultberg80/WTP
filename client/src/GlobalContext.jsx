@@ -116,54 +116,82 @@ export function GlobalProvider({ children }) {
     }
   };
 
-  // Check authentication status when the app loads
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        // Adjusted to match your GET method for login status
-        const response = await fetch('/api/login');
-        if (response.ok) {
-          const userData = await response.json();
+  // Fix the auth check function to handle empty responses
+  const checkAuthStatus = async () => {
+    try {
+      const response = await fetch('/api/login');
+      if (response.ok) {
+        // Check if the response has content before parsing JSON
+        const text = await response.text();
+        if (text && text.length > 0) {
+          const userData = JSON.parse(text);
+          console.log('Auth check response:', userData); // Debug output
           setCurrentUser(userData);
           setIsAuthenticated(true);
+        } else {
+          console.log('Auth check: Empty response received');
+          setIsAuthenticated(false);
+          setCurrentUser(null);
         }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        setCurrentUser(null);
+      } else {
+        // If response is not OK, user is not authenticated
+        console.log('Auth check: Not authenticated');
         setIsAuthenticated(false);
+        setCurrentUser(null);
       }
-    };
+    } catch (error) {
+      console.error('Auth check error:', error);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    }
+  };
 
+  // Check authentication status when the app loads
+  useEffect(() => {
     checkAuthStatus();
   }, []);
 
-  // Fetch tickets
+  // Fix the fetchTickets function to handle API errors better
   const fetchTickets = async () => {
-    if (!shouldFetchData('tickets')) return;
+    if (!isAuthenticated) {
+      console.log('Not fetching tickets - user not authenticated');
+      return;
+    }
     
+    // Don't use the shouldFetchData check for now until we get basic functionality working
     setIsLoading(prev => ({ ...prev, tickets: true }));
     setErrors(prev => ({ ...prev, tickets: null }));
     
     try {
-      const response = await fetch('/api/tickets');
+      console.log('Fetching tickets for user:', currentUser);
+      
+      // Ensure the endpoint matches your actual backend API
+      const endpoint = '/api/tickets';
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include' // Important to include credentials
+      });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch tickets: ${response.status}`);
       }
       
-      const data = await response.json();
+      const text = await response.text();
+      if (!text) {
+        console.log('Empty response when fetching tickets');
+        setTickets([]);
+        return;
+      }
       
-      // Transform the data
-      const transformedTickets = Array.isArray(data) ? data.map(ticket => ({
-        id: ticket.id || ticket.chatToken,
-        chatToken: ticket.chatToken,
-        sender: ticket.sender,
-        message: ticket.message,
-        timestamp: ticket.timestamp,
-        issueType: ticket.issueType,
-        formType: ticket.formType,
-        email: ticket.email
-      })) : [];
+      const data = JSON.parse(text);
+      console.log('Tickets data:', data);
+      
+      // Transform the data based on your actual API response
+      const transformedTickets = Array.isArray(data) ? data : [];
       
       setTickets(transformedTickets);
     } catch (error) {
