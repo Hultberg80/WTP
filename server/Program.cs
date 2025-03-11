@@ -173,9 +173,10 @@ public class Program // Deklarerar huvudklassen Program
             Console.WriteLine("SetSession is called..Setting session");
 
             await using var cmd =
-                db.CreateCommand("SELECT * FROM users WHERE email = @email and password = @password");
+                db.CreateCommand("SELECT users.\"Id\" as \"id\", users.first_name, users.company, users.role_id, users.email FROM users WHERE email = @email and password = @password");
             cmd.Parameters.AddWithValue("@email", request.Email);
             cmd.Parameters.AddWithValue("@password", request.Password);
+            
 
             await using (var reader = await cmd.ExecuteReaderAsync())
             {
@@ -184,8 +185,12 @@ public class Program // Deklarerar huvudklassen Program
                 {
                     UserForm user = new UserForm
                     {
-                        Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                        Email = reader.GetString(reader.GetOrdinal("email")),
+                        Id = reader.GetInt32(0), // Hämtar ID från resultatet
+                        FirstName = reader.GetString(1), // Hämtar förnamn från resultatet
+                        Company = reader.GetString(2), // Hämtar företag från resultatet
+                        Role = reader.GetInt32(3) == 1 ? "staff" : "admin",
+                        Email = reader.GetString(4)
+                        
                         
                     };
                     context.Session.SetString("userEmail", user.Email);
@@ -202,7 +207,7 @@ public class Program // Deklarerar huvudklassen Program
         
         static async Task<IResult> Logout(HttpContext context)
         {
-            if (context.Session.GetString("User") == null)
+            if (context.Session.GetString("userEmail") == null)
             {
                 return Results.Conflict(new { message = "No login found." });
             }
