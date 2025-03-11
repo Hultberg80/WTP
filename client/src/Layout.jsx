@@ -1,12 +1,39 @@
 // Layout.jsx
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 
 function Layout() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  const navigate = useNavigate();
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
+
+  };
+
+  const handleLogOut = async (event) => {
+    event.preventDefault();
+    setIsLoading(true);
+
+    const response = await fetch("/api/login", {
+      method: "DELETE",
+      headers: {"Content-Type":"application/json"},
+      credentials: "include"
+    }
+  )
+  if(response.ok){
+    const data = await response.json();
+    console.log("Logout succesful:", data)
+    setIsLoggedIn(false); // Uppdatera state
+    navigate("/staff/login")
+  } else {
+    console.error("Logout misslyckades:", response.statusText);
+  }
+
+  setIsLoading(false);
   };
 
   return (
@@ -49,7 +76,7 @@ function Layout() {
               <div>
                 <h2>Admin</h2>
                 
-
+                {/*{user.role != 'admin' ? (*/}
                 <NavLink 
                   to={"/admin/dashboard"} 
                   onClick={() => setMenuOpen(false)}
@@ -64,7 +91,7 @@ function Layout() {
                   Create User
                 </NavLink>
               </div>
-
+                {/*) : //stuff*/}
               {/* Staff NavLinks */}
               <div>
                 <h2>Staff</h2>
@@ -99,9 +126,12 @@ function Layout() {
             </div>
             {/* Login icon on the right */}
             <div className="navbar-right">
+              
+              <button onClick={handleLogOut}>
               <a href="">
                 <img src="/img/login.png" alt="Logga in" className="login-img"/>
               </a>
+              </button>
             </div>
           </div>
         </div>

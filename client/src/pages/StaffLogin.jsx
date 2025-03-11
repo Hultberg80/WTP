@@ -1,4 +1,5 @@
 import { useState } from 'react';
+//import { useNavigate} from "react-router";
 
 import './StaffLogin.css';
 
@@ -7,8 +8,30 @@ function StaffLogin() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  //const navigate = useNavigate();
 
+  const handleLogOut = async (event) => {
+    event.preventDefault();
+    setIsLoading(true);
 
+    const response = await fetch("/api/login", {
+      method: "DELETE",
+      headers: {"Content-Type":"application/json"},
+      credentials: "include"
+    }
+  )
+  if(response.ok){
+    const data = await response.json();
+    console.log("Logout succesful:", data)
+    setIsLoggedIn(false); // Uppdatera state
+  } else {
+    console.error("Logout misslyckades:", response.statusText);
+  }
+
+  setIsLoading(false);
+  };
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -22,11 +45,17 @@ function StaffLogin() {
       credentials: "include"
     }
     )
+
     if(response.ok){
       const data = await response.json();
       console.log(data)
-      setIsLoading(false)
+      setIsLoggedIn(true); // Uppdatera state
+      //navigate("/staff/dashboard");
+    } else {
+      console.log("Login misslyckades:", response.statusText);
     }
+
+    setIsLoading(false);
     
     // Simulate login request
     
@@ -84,16 +113,20 @@ function StaffLogin() {
           <div className="staff-login-button-container">
             <button
               type="submit"
+              onClick={isLoggedIn ? handleLogOut : handleLogin}
               disabled={isLoading}
               className={`staff-login-button ${isLoading ? 'loading' : ''}`}
             >
               {isLoading ? (
                 <span className="button-loading-text">
                   <span className="button-spinner"></span>
-                  Loggar in...
+                  {isLoggedIn ? "Loggar ut..." : "Loggar in..."}
                 </span>
-              ) : 'LOGGA IN'}
+              ) : isLoggedIn ? 'LOGGA UT' : 'LOGGA IN'}
             </button>
+          </div>
+          <div>
+            <button onClick={handleLogOut}>Logga ut</button>
           </div>
           
           <div className="staff-login-footer">
