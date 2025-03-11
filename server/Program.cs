@@ -624,7 +624,7 @@ app.MapPost("/api/forsakring", async (ForsakringsForm submission, NpgsqlDataSour
                 
             } else if (userCompany == "forsakring")
             {
-                userCompany = "Försäkringsärende";
+                userCompany = "Försäkringsärenden";
                 
             }
             Console.WriteLine($"userCompany: {userCompany}");
