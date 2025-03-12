@@ -1618,7 +1618,6 @@ nav a[href="chat"]:hover {
 /* New ticket styling */
 .new-ticket {
   position: relative;
-  border-left: 4px solid #e74c3c !important;
   animation: pulse-border 2s infinite;
   box-shadow: 0 4px 8px rgba(231, 76, 60, 0.1);
 }
@@ -1627,7 +1626,7 @@ nav a[href="chat"]:hover {
   position: absolute;
   top: -8px;
   right: -8px;
-  background: #e74c3c;
+  background: #06dd0a;
   color: white;
   font-size: 0.7rem;
   font-weight: bold;
