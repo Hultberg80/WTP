@@ -1612,3 +1612,51 @@ nav a[href="chat"]:hover {
   margin-top: 2px;
   text-transform: capitalize;
 }
+
+/* Add these styles to your index.css file */
+
+/* New ticket styling */
+.new-ticket {
+  position: relative;
+  border-left: 4px solid #e74c3c !important;
+  animation: pulse-border 2s infinite;
+  box-shadow: 0 4px 8px rgba(231, 76, 60, 0.1);
+}
+
+.new-ticket-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: bounce 2s infinite;
+  z-index: 2;
+}
+
+/* Pulse animation for the border */
+@keyframes pulse-border {
+  0% {
+    border-left-color: #e74c3c;
+  }
+  50% {
+    border-left-color: #ff8e7a;
+  }
+  100% {
+    border-left-color: #e74c3c;
+  }
+}
+
+/* Subtle bounce animation for the badge */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}

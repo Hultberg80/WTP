@@ -1,4 +1,4 @@
-// Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
+// Importerar nödvändiga React hooks för state-hantering, sidoeffekter och referenser
 import { useState, useEffect } from "react";
 import Aside from "./Aside";
 import ChatLink from "../../ChatLink"; // Import the ChatLink component
@@ -26,6 +26,12 @@ function Main() {
         return savedDone ? JSON.parse(savedDone) : [];
     });
     
+    // State för att hålla koll på vilka ärenden som har visats/lästs
+    const [viewedTickets, setViewedTickets] = useState(() => {
+        const savedViewedTickets = localStorage.getItem('viewedTickets');
+        return savedViewedTickets ? JSON.parse(savedViewedTickets) : {};
+    });
+    
     // State för att hålla koll på vilket ärende som dras
     const [draggedTask, setDraggedTask] = useState(null);
 
@@ -43,6 +49,11 @@ function Main() {
     useEffect(() => {
         localStorage.setItem('done', JSON.stringify(done));
     }, [done]);
+    
+    // Save viewedTickets state to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem('viewedTickets', JSON.stringify(viewedTickets));
+    }, [viewedTickets]);
 
     useEffect(() => {
         fetchAllTickets();
@@ -117,6 +128,14 @@ function Main() {
                 : task
         ));
     }
+    
+    // Funktion för att markera ett ärende som visat/läst
+    function markAsViewed(taskId) {
+        setViewedTickets(prev => ({
+            ...prev,
+            [taskId]: true
+        }));
+    }
 
     // Funktion för att formatera datum enligt svenskt format
     function formatDate(dateString) {
@@ -130,6 +149,11 @@ function Main() {
             hour: '2-digit',
             minute: '2-digit'
         });
+    }
+    
+    // Funktion för att kontrollera om ett ärende är nytt (inte visat)
+    function isNewTicket(taskId) {
+        return !viewedTickets[taskId];
     }
 
     // Huvudvy för applikationen
@@ -150,7 +174,7 @@ function Main() {
                         key={task.id || task.chatToken}
                         draggable
                         onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
+                        className={`ticket-task-item ${isNewTicket(task.id) ? 'new-ticket' : ''}`}
                     >
                         <div className="ticket-task-content"
                             contentEditable
@@ -159,6 +183,10 @@ function Main() {
                         >
                             {task.issueType}
                         </div>
+                        
+                        {isNewTicket(task.id) && (
+                            <div className="new-ticket-badge">Ny</div>
+                        )}
 
                         <div className="ticket-task-details">
                             <div className="ticket-wtp">{task.wtp}</div>
@@ -167,8 +195,11 @@ function Main() {
                                 {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
                             </div>
                             <div className="ticket-task-token">
-                                {/* Replace regular link with ChatLink component */}
-                                <ChatLink chatToken={task.chatToken}>
+                                {/* Using ChatLink component with onClick to mark as viewed */}
+                                <ChatLink 
+                                    chatToken={task.chatToken}
+                                    onClick={() => markAsViewed(task.id)}
+                                >
                                     Öppna chatt
                                 </ChatLink>
                             </div>
@@ -188,7 +219,7 @@ function Main() {
                         key={task.id || task.chatToken}
                         draggable
                         onDragStart={() => handleDragStart(task)}
-                        className="ticket-task-item"
+                        className={`ticket-task-item ${isNewTicket(task.id) ? 'new-ticket' : ''}`}
                     >
                         <div className="ticket-task-content"
                             contentEditable
@@ -197,6 +228,10 @@ function Main() {
                         >
                             {task.issueType}
                         </div>
+                        
+                        {isNewTicket(task.id) && (
+                            <div className="new-ticket-badge">Ny</div>
+                        )}
 
                         <div className="ticket-task-details">
                             <div className="ticket-wtp">{task.wtp}</div>
@@ -205,8 +240,10 @@ function Main() {
                                 {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
                             </div>
                             <div className="ticket-task-token">
-                                {/* Replace regular link with ChatLink component */}
-                                <ChatLink chatToken={task.chatToken}>
+                                <ChatLink 
+                                    chatToken={task.chatToken}
+                                    onClick={() => markAsViewed(task.id)}
+                                >
                                     Öppna chatt
                                 </ChatLink>
                             </div>
@@ -242,7 +279,6 @@ function Main() {
                                 {formatDate(task.submittedAt || task.timestamp || task.createdAt)}
                             </div>
                             <div className="ticket-task-token">
-                                {/* Replace regular link with ChatLink component */}
                                 <ChatLink chatToken={task.chatToken}>
                                     Öppna chatt
                                 </ChatLink>
