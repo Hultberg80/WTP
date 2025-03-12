@@ -40,6 +40,11 @@ body {
   border: none;
 }
 
+.brand-name {
+  height: 200px;
+  width: 200px;
+}
+
 .login-img {
   width: 200px;
   height: 200px;

@@ -32,7 +32,7 @@ function Layout() {
           <div>
             {/* Logo/Brand on the left */}
             <div className="navbar-left">
-              <h1 className="project-name">WPT</h1>
+              <img className="brand-name" src="public/img/wtp.png" alt="" />
               
               {/* Display company logo if user is logged in and has a company */}
               {isLoggedIn && user && user.companyLogo && (
