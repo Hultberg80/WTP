@@ -83,6 +83,9 @@ main {
   flex-direction: column;
   position: sticky;
   top: 1rem;
+  
+  overflow: visible; /* Allow the expanded card to overflow outside of aside */
+  z-index: 100;
 }
 
 .staff-header {
@@ -151,6 +154,23 @@ main {
   color: #94a3b8;
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}
+
+
+.staff-member-expanded {
+  position: absolute;
+  left: 105%;
+  top: 50%;
+  transform: translateY(-50%) scale(0.95);
+  opacity: 0;
+  visibility: hidden;
+  background: #fff;
+  width: 250px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 1.5rem;
+  z-index: 1000; /* Increased z-index to ensure it appears above other content */
+  transition: all 0.3s ease;
 }
 
 .staff-footer {
