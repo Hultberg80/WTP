@@ -41,10 +41,11 @@ body {
 }
 
 .login-img {
-  width: 80px;
-  height: 80px;
+  width: 200px;
+  height: 200px;
   border-radius: 50%;
   transition: transform 0.2s;
+  margin-top: 20px
 }
 
 .login-img:hover {

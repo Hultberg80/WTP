@@ -97,29 +97,25 @@ function Layout() {
                 </div>
               )}
 
-              {/* Staff NavLinks */}
-              <div>
-                <h2>Staff</h2>
-                {isLoggedIn && (
-                  <>
-                    <NavLink 
-                      to={"/staff/dashboard"}
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Dashboard
-                    </NavLink>
+              {/* Staff NavLinks - Only shown when user is logged in */}
+              {isLoggedIn && (
+                <div>
+                  <h2>Staff</h2>
+                  <NavLink 
+                    to={"/staff/dashboard"}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Dashboard
+                  </NavLink>
 
-                    <NavLink 
-                      to={"/staff/update-user"}
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Update password
-                    </NavLink>
-                  </>
-                )}
-              </div>
-
-           
+                  <NavLink 
+                    to={"/staff/update-user"}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Update password
+                  </NavLink>
+                </div>
+              )}
             </div>
             
             {/* Login/User info on right */}
@@ -131,7 +127,7 @@ function Layout() {
                 </div>
               ) : (
                 <NavLink to="/staff/login">
-                  <img src="/img/login.png" alt="Logga in" className="login-img"/>
+                  <img src="/img/login2.png" alt="Logga in" className="login-img"/>
                 </NavLink>
               )}
             </div>
