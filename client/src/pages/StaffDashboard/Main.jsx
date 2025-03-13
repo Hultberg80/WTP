@@ -1,45 +1,53 @@
 // Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
-// Importerar nödvändiga React hooks för state-hantering, sidoeffekter, callbacks och referenser
 import { useState, useEffect } from "react";
 import Aside from "./Aside";
-import ChatLink from "../../ChatLink"; // Import the ChatLink component
-import { useAuth } from "../../AuthContext"; // Import useAuth hook
+import ChatLink from "../../ChatLink"; // Importerar ChatLink-komponenten
+import { useAuth } from "../../AuthContext"; // Importerar useAuth-hooken
 
 // Definierar huvudkomponenten för applikationen
 function Main() {
-    // Get current user from auth context
+    // Hämtar aktuell användare från auth context
     const { user } = useAuth();
     
-    // Create user-specific storage keys
+    // Skapar användarspecifika nycklar för localStorage
     const getUserTasksKey = () => `tasks_${user?.username || 'guest'}`;
     const getMyTasksKey = () => `myTasks_${user?.username || 'guest'}`;
     const getDoneTasksKey = () => `done_${user?.username || 'guest'}`;
     
+    // Skapar företagsövergripande nyckel för att spåra vilka ärenden som bearbetas
+    const getCompanyActiveTasksKey = () => `companyActiveTasks_${user?.company || 'guest'}`;
+    
     // State för alla ärenden/tasks
     const [tasks, setTasks] = useState(() => {
-        // Try to get tasks from localStorage on initial render with user-specific key
+        // Försöker hämta ärenden från localStorage vid första renderingen med användarspecifik nyckel
         const savedTasks = localStorage.getItem(getUserTasksKey());
         return savedTasks ? JSON.parse(savedTasks) : [];
     });
     
     // State för användarens egna ärenden
     const [myTasks, setMyTasks] = useState(() => {
-        // Try to get myTasks from localStorage on initial render with user-specific key
+        // Försöker hämta användarens egna ärenden från localStorage med användarspecifik nyckel
         const savedMyTasks = localStorage.getItem(getMyTasksKey());
         return savedMyTasks ? JSON.parse(savedMyTasks) : [];
     });
     
     // State för färdiga ärenden
     const [done, setDone] = useState(() => {
-        // Try to get done tasks from localStorage on initial render with user-specific key
+        // Försöker hämta färdiga ärenden från localStorage med användarspecifik nyckel
         const savedDone = localStorage.getItem(getDoneTasksKey());
         return savedDone ? JSON.parse(savedDone) : [];
+    });
+    
+    // Spårar aktiva ärenden över hela företaget (enbart frontend-lösning)
+    const [companyActiveTasks, setCompanyActiveTasks] = useState(() => {
+        const savedCompanyTasks = localStorage.getItem(getCompanyActiveTasksKey());
+        return savedCompanyTasks ? JSON.parse(savedCompanyTasks) : [];
     });
     
     // State för att hålla koll på vilket ärende som dras
     const [draggedTask, setDraggedTask] = useState(null);
 
-    // Define mapping objects for tasks and their setter functions
+    // Definierar mappningsobjekt för ärenden och deras setter-funktioner
     const listMap = {
         tasks: tasks,
         myTasks: myTasks,
@@ -97,7 +105,22 @@ function Main() {
         ? tasks.filter(task => task.wtp === issuTypeFilter)
         : tasks;
 
-    // Reload tasks from localStorage when user changes
+    // Sätter upp periodisk kontroll av localStorage för företagsaktiva ärenden
+    useEffect(() => {
+        // Uppdaterar mina ärenden i företagsregistret
+        updateCompanyActiveTasks();
+        
+        // Sätter upp intervall för att regelbundet kontrollera företagsövergripande aktiva ärenden
+        const intervalId = setInterval(() => {
+            checkCompanyActiveTasks();
+        }, 5000); // Kontrollerar var 5:e sekund
+        
+        return () => {
+            clearInterval(intervalId);
+        };
+    }, [user?.username, user?.company]);
+
+    // Ladda om ärenden från localStorage när användaren ändras
     useEffect(() => {
         const savedTasks = localStorage.getItem(getUserTasksKey());
         const savedMyTasks = localStorage.getItem(getMyTasksKey());
@@ -107,28 +130,81 @@ function Main() {
         setMyTasks(savedMyTasks ? JSON.parse(savedMyTasks) : []);
         setDone(savedDone ? JSON.parse(savedDone) : []);
         
-        // Also fetch new tickets when user changes
+        // Hämtar också nya ärenden när användaren ändras
         fetchAllTickets();
-    }, [user?.username]); // Re-run when username changes
+    }, [user?.username]); // Körs om när användarnamnet ändras
 
-    // Save tasks state to localStorage whenever it changes
+    // Sparar tasks-state till localStorage när det ändras
     useEffect(() => {
         localStorage.setItem(getUserTasksKey(), JSON.stringify(tasks));
     }, [tasks, user]);
 
-    // Save myTasks state to localStorage whenever it changes
+    // Sparar myTasks-state till localStorage när det ändras
     useEffect(() => {
         localStorage.setItem(getMyTasksKey(), JSON.stringify(myTasks));
+        
+        // När myTasks ändras, uppdatera företagets aktiva ärenden
+        updateCompanyActiveTasks();
     }, [myTasks, user]);
 
-    // Save done state to localStorage whenever it changes
+    // Sparar done-state till localStorage när det ändras
     useEffect(() => {
         localStorage.setItem(getDoneTasksKey(), JSON.stringify(done));
     }, [done, user]);
 
+    // Hämtar ärenden på nytt efter att vi uppdaterat företagets aktiva ärenden
+    useEffect(() => {
+        fetchAllTickets();
+    }, [companyActiveTasks]);
+
+    // Initial hämtning av alla ärenden
     useEffect(() => {
         fetchAllTickets();
     }, []);
+
+    // Uppdaterar vilka ärenden denna användare arbetar med i företagsregistret
+    function updateCompanyActiveTasks() {
+        if (!user?.username || !user?.company) return;
+        
+        // Hämtar företagets nuvarande aktiva ärenden
+        let currentActiveTasksStr = localStorage.getItem(getCompanyActiveTasksKey());
+        let currentActiveTasks = currentActiveTasksStr ? JSON.parse(currentActiveTasksStr) : [];
+        
+        // Tar bort alla ärenden som tidigare tilldelats denna användare
+        currentActiveTasks = currentActiveTasks.filter(task => 
+            task.assignedToUsername !== user.username
+        );
+        
+        // Lägger till alla ärenden som finns i myTasks som tilldelade till denna användare
+        const myActiveTasksInfo = myTasks.map(task => ({
+            ticketId: task.id || task.chatToken,
+            chatToken: task.chatToken,
+            assignedToUsername: user.username,
+            assignedAt: new Date().toISOString()
+        }));
+        
+        // Kombinerar den filtrerade listan och nya tilldelningar
+        const updatedActiveTasks = [...currentActiveTasks, ...myActiveTasksInfo];
+        
+        // Sparar tillbaka till localStorage
+        localStorage.setItem(getCompanyActiveTasksKey(), JSON.stringify(updatedActiveTasks));
+        
+        // Uppdaterar state
+        setCompanyActiveTasks(updatedActiveTasks);
+    }
+
+    // Kontrollerar företagsövergripande aktiva ärenden
+    function checkCompanyActiveTasks() {
+        if (!user?.company) return;
+        
+        const companyTasksStr = localStorage.getItem(getCompanyActiveTasksKey());
+        if (!companyTasksStr) return;
+        
+        const companyTasks = JSON.parse(companyTasksStr);
+        
+        // Uppdaterar state med de senaste företagsövergripande aktiva ärendena
+        setCompanyActiveTasks(companyTasks);
+    }
 
     function printFetchError(error) {
         console.error("failed to fetch tickets: " + error);
@@ -140,24 +216,33 @@ function Main() {
             fetch("/api/tickets", { credentials: "include" })
                 .then(response => response.json(), printFetchError)
                 .then(data => {
-                    // Transform the data
+                    // Transformerar datan
                     let newData = data.map(ticket => ({
                         ...ticket,
-                        id: ticket.id || ticket.chatToken, // Ensure each item has an id
+                        id: ticket.id || ticket.chatToken, // Säkerställer att varje objekt har ett id
                         issueType: `${ticket.sender} - ${ticket.formType}`,
                         wtp: ticket.issueType,
                         chatToken: ticket.chatToken,
                         chatLink: `http://localhost:3001/chat/${ticket.chatToken}`
                     }));
 
-                    // Create a set of IDs that are in myTasks or done
+                    // Skapar en uppsättning av ID:n som finns i myTasks eller done
                     const myTasksIds = new Set(myTasks.map(task => task.id || task.chatToken));
                     const doneIds = new Set(done.map(task => task.id || task.chatToken));
                     
-                    // Filter out any tickets that are already in myTasks or done
+                    // Skapar en uppsättning av ID:n som bearbetas av andra användare i företaget
+                    const otherUsersTaskIds = new Set(
+                        companyActiveTasks
+                            .filter(activeTask => activeTask.assignedToUsername !== user?.username)
+                            .map(activeTask => activeTask.ticketId || activeTask.chatToken)
+                    );
+                    
+                    // Filtrerar ut ärenden som redan finns i myTasks, done eller bearbetas av andra
                     const filteredTasks = newData.filter(task => {
                         const taskId = task.id || task.chatToken;
-                        return !myTasksIds.has(taskId) && !doneIds.has(taskId);
+                        return !myTasksIds.has(taskId) && 
+                               !doneIds.has(taskId) &&
+                               !otherUsersTaskIds.has(taskId);
                     });
                     
                     setTasks(filteredTasks);
@@ -190,30 +275,35 @@ function Main() {
 
         console.log(`Moving task ${task.id} from ${sourceColumn} to ${destColumn}`);
 
-        // Check if the task is being moved to the done column from another column
-        if (destColumn === 'done' && sourceColumn !== 'done') {
-            try {
-                // Archive the ticket in the database
+        try {
+            // Kontrollerar om ärendet flyttas till klara-kolumnen från en annan kolumn
+            if (destColumn === 'done' && sourceColumn !== 'done') {
+                // Arkiverar ärendet i databasen
                 await archiveTicket(task);
-                console.log("Ticket archived successfully");
-            } catch (error) {
-                console.error("Failed to archive ticket:", error);
-                // You might want to show an error message to the user here
+                console.log("Ärendet arkiverades framgångsrikt");
             }
-        }
 
-        // Remove the task from the source list
-        if (sourceColumn && listSetterMap[sourceColumn]) {
-            listSetterMap[sourceColumn](prev => 
-                prev.filter(t => t.id !== task.id && t.chatToken !== task.chatToken)
-            );
-        }
+            // Tar bort ärendet från källlistan
+            if (sourceColumn && listSetterMap[sourceColumn]) {
+                listSetterMap[sourceColumn](prev => 
+                    prev.filter(t => t.id !== task.id && t.chatToken !== task.chatToken)
+                );
+            }
 
-        // Add the task to the destination list
-        setList(prev => [...prev, {...task, column: destColumn}]);
-        
-        // Clear the dragged task
-        setDraggedTask(null);
+            // Lägger till ärendet i mållistan
+            setList(prev => [...prev, {...task, column: destColumn}]);
+            
+            // Uppdaterar företagets aktiva ärenden om vi flyttar till/från myTasks
+            if (destColumn === 'myTasks' || sourceColumn === 'myTasks') {
+                setTimeout(updateCompanyActiveTasks, 100);
+            }
+        } catch (error) {
+            console.error("Error during drop operation:", error);
+            alert("Ett fel uppstod: " + error.message);
+        } finally {
+            // Clear the dragged task
+            setDraggedTask(null);
+        }
     };
 
     // Improve the archiveTicket function with better error handling
@@ -249,7 +339,8 @@ function Main() {
                 timestamp: ticket.timestamp || ticket.submittedAt || new Date().toISOString(),
                 formType: determineFormType(ticket) || "Unknown",
                 companyType: ticket.companyType || "",
-                resolutionNotes: "Closed from dashboard"
+                resolutionNotes: "Closed from dashboard",
+                closedBy: user?.username || "Unknown user"
             };
 
             console.log("Sending archive data with table update info:", JSON.stringify(archivedTicket));
@@ -271,6 +362,9 @@ function Main() {
                 throw new Error(`HTTP error! Status: ${response.status}, Response: ${responseData}`);
             }
 
+            // Also remove from company active tasks
+            removeFromCompanyActiveTasks(ticket);
+
             return responseData ? JSON.parse(responseData) : { success: true };
         } catch (error) {
             console.error('Error archiving ticket:', error);
@@ -279,7 +373,31 @@ function Main() {
         }
     };
 
-    // Helper function to determine original table based on ticket properties
+    // Tar bort ett ärende från företagets aktiva ärenden
+    function removeFromCompanyActiveTasks(ticket) {
+        if (!user?.company) return;
+        
+        const ticketId = ticket.id || ticket.chatToken;
+        
+        // Hämtar företagets nuvarande aktiva ärenden
+        let activeTasks = localStorage.getItem(getCompanyActiveTasksKey());
+        if (!activeTasks) return;
+        
+        let activeTasksArray = JSON.parse(activeTasks);
+        
+        // Tar bort ärendet
+        activeTasksArray = activeTasksArray.filter(task => 
+            task.ticketId !== ticketId && task.chatToken !== ticket.chatToken
+        );
+        
+        // Sparar tillbaka till localStorage
+        localStorage.setItem(getCompanyActiveTasksKey(), JSON.stringify(activeTasksArray));
+        
+        // Uppdaterar state
+        setCompanyActiveTasks(activeTasksArray);
+    }
+
+    // Hjälpfunktion för att bestämma originaltabell baserat på ärendets egenskaper
     const determineOriginalTable = (ticket) => {
         if (ticket.regNummer) return "fordon_forms";
         if (ticket.insuranceType) return "forsakrings_forms";
@@ -287,7 +405,7 @@ function Main() {
         return "initial_form_messages";
     };
 
-    // Helper function to determine form type
+    // Hjälpfunktion för att bestämma formulärtyp
     const determineFormType = (ticket) => {
         if (ticket.regNummer) return "Fordonsservice";
         if (ticket.insuranceType) return "Försäkringsärende";
