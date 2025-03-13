@@ -13,6 +13,9 @@ export default function ChatModal({ isOpen, onClose, chatToken }) {
     const messagesEndRef = useRef(null);
     const intervalRef = useRef(null);
     const modalRef = useRef(null);
+    const [showRating, setShowRating] = useState(false); // 🔹 För att visa betygsformuläret
+    const [rating, setRating] = useState(null);
+    const [feedback, setFeedback] = useState("");
 
     // Check authentication status and set sender name accordingly
     useEffect(() => {
@@ -38,6 +41,57 @@ export default function ChatModal({ isOpen, onClose, chatToken }) {
         
         checkAuthStatus();
     }, []);
+
+
+     // Hanterar att avsluta chatten
+     const handleEndChat = async () => {
+        if (!chatToken) return;
+
+        try {
+            const response = await fetch(`/api/chat/end/${chatToken}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error("Kunde inte avsluta chatten");
+            }
+
+            console.log("Chat avslutad");
+            setShowRating(true); // 🔹 Visa betygsformuläret istället för chatten
+        } catch (error) {
+            console.error("Fel vid avslutning av chatt:", error);
+        }
+    };
+
+    // Hanterar att skicka betyg och feedback
+    const handleSubmitRating = async () => {
+        if (!chatToken || rating === null) return;
+
+        try {
+            const response = await fetch(`/api/chat/rate/${chatToken}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ rating, feedback }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Kunde inte skicka betyg");
+            }
+
+            console.log("Betyg skickat");
+            onClose(); // 🔹 Stäng chatten efter att betyget skickats
+        } catch (error) {
+            console.error("Fel vid betygsändning:", error);
+        }
+    };
+
+
+
 
     // Simple fetch for chat messages
     const fetchMessages = async () => {
@@ -240,69 +294,103 @@ export default function ChatModal({ isOpen, onClose, chatToken }) {
                     <h2 className="chat-modal__name">
                         {chatOwner || "Chat"}
                     </h2>
-                    <button 
-                        className="chat-modal__close" 
-                        onClick={onClose}
-                    >
+                    <button className="chat-modal__close" onClick={onClose}>
                         &times;
                     </button>
                 </div>
-                
-                <div className="chat-modal__messages">
-                    {messages.length === 0 ? (
-                        <div className="chat-modal__empty">
-                            Inga meddelanden än
+
+                {/* 🔹 Om chatten är avslutad, visa betygsformuläret istället */}
+                {showRating ? (
+                    <div className="chat-modal__rating">
+                        <h3>Hur var din chattupplevelse?</h3>
+                        <div className="chat-modal__rating-stars">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <span
+                                    key={star}
+                                    className={`star ${rating >= star ? "selected" : ""}`}
+                                    onClick={() => setRating(star)}
+                                >
+                                    ⭐
+                                </span>
+                            ))}
                         </div>
-                    ) : (
-                        messages.map((msg) => (
-                            <div 
-                                key={msg.id}
-                                className={`chat-modal__message ${
-                                    msg.sender === userName 
-                                        ? 'chat-modal__message--sent' 
-                                        : 'chat-modal__message--received'
-                                }`}
+                        <textarea
+                            className="chat-modal__rating-feedback"
+                            placeholder="Lämna en kommentar (valfritt)"
+                            value={feedback}
+                            onChange={(e) => setFeedback(e.target.value)}
+                        />
+                        <button 
+                            className="chat-modal__rating-submit"
+                            onClick={handleSubmitRating}
+                        >
+                            Skicka Betyg
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="chat-modal__messages">
+                            {messages.length === 0 ? (
+                                <div className="chat-modal__empty">
+                                    Inga meddelanden än
+                                </div>
+                            ) : (
+                                messages.map((msg) => (
+                                    <div 
+                                        key={msg.id}
+                                        className={`chat-modal__message ${
+                                            msg.sender === userName 
+                                                ? 'chat-modal__message--sent' 
+                                                : 'chat-modal__message--received'
+                                        }`}
+                                    >
+                                        <p className="chat-modal__message-text">{msg.message}</p>
+                                        <small className="chat-modal__message-timestamp">
+                                            {new Date(msg.timestamp).toLocaleString()}
+                                        </small>
+                                    </div>
+                                ))
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+
+                        <div className="chat-modal__input-container">
+                            <input 
+                                type="text" 
+                                className="chat-modal__input-field"
+                                placeholder="Skriv ett meddelande..." 
+                                value={message}
+                                onChange={(e) => setMessage(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleSendMessage();
+                                    }
+                                }}
+                            />
+
+                            <div className="emoji" onClick={() => setOpen(!open)}>😃</div>
+                            {open && (
+                                <div ref={emojiPickerRef} className="emojipicker">
+                                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                                </div>
+                            )}
+
+                            <button 
+                                className="chat-modal__send-button" 
+                                onClick={handleSendMessage}
                             >
-                                <p className="chat-modal__message-text">{msg.message}</p>
-                                <small className="chat-modal__message-timestamp">
-                                    {new Date(msg.timestamp).toLocaleString()}
-                                </small>
-                            </div>
-                        ))
-                    )}
-                    <div ref={messagesEndRef} />
-                </div>
+                                Skicka
+                            </button>
+                        </div>
 
-                <div className="chat-modal__input-container">
-                    <input 
-                        type="text" 
-                        className="chat-modal__input-field"
-                        placeholder="Skriv ett meddelande..." 
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                                handleSendMessage();
-                            }
-                        }}
-                    />
-
-                    <div className="emoji" onClick={() => setOpen(!open)}>😃
-                    </div>
-                    {open && (
-                    <div ref={emojiPickerRef} className="emojipicker">
-                    <EmojiPicker onEmojiClick={handleEmojiClick} />
-                    </div>
-                    )}
-
-                    <button 
-                        className="chat-modal__send-button" 
-                        onClick={handleSendMessage}
-                        type="button"
-                    >
-                        Skicka
-                    </button>
-                </div>
+                        <button 
+                            className="chat-modal__end-chat-button" 
+                            onClick={handleEndChat}
+                        >
+                            Avsluta Chatt
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );
