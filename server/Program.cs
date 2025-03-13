@@ -28,49 +28,23 @@ public class Program // Deklarerar huvudklassen Program
         NpgsqlDataSource postgresdb = NpgsqlDataSource.Create(connectionString);
         
         
-        builder.Services.AddEndpointsApiExplorer(); // Lägger till API Explorer för Swagger
-        builder.Services.AddSwaggerGen(); // Lägger till Swagger-generering
-        builder.Services.AddAuthentication(); // Lägger till autentiseringsstöd
-        builder.Services.AddAuthorization(); // Lägger till auktoriseringsstöd
-        builder.Services.AddSingleton <NpgsqlDataSource>(postgresdb);
-        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSingleton<NpgsqlDataSource>(postgresdb);
+ 
+        builder.Services.AddDistributedMemoryCache(); // Required for session state
         builder.Services.AddSession(options =>
         {
-            options.IdleTimeout = TimeSpan.FromMinutes(20);
+            options.IdleTimeout = TimeSpan.FromMinutes(30); // Set session timeout
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
         });
-        builder.Services.AddCors(options => // Lägger till CORS-stöd
-        {
-            options.AddPolicy("AllowReactApp", // Definierar en CORS-policy för React-appen
-                builder =>
-                {
-                    builder
-                        .WithOrigins( // Anger tillåtna ursprung för CORS
-                            "http://localhost:3001",
-                            "https://localhost:3001"
-                        )
-                        .AllowAnyMethod() // Tillåter alla HTTP-metoder
-                        .AllowAnyHeader(); // Tillåter alla HTTP-headers
-                });
-        });
-
+ 
+ 
         builder.Services.AddScoped<IEmailService, EmailService>(); // Registrerar EmailService som en scopad tjänst
-
+ 
         var app = builder.Build(); // Bygger WebApplication-instansen
-        app.UseSession();
-        if (app.Environment.IsDevelopment()) // Kontrollerar om miljön är utvecklingsmiljö
-        {
-            app.UseSwagger(); // Aktiverar Swagger
-            app.UseSwaggerUI(); // Aktiverar Swagger UI
-        }
+        app.UseSession(); // Required for session state
         
-        app.UseCors("AllowReactApp"); // Använder CORS-policyn för React-appen
-        app.UseAuthentication(); // Aktiverar autentisering
-        app.UseAuthorization(); // Aktiverar auktorisering
         
-        // Lägg till middleware för debugging (kan tas bort i produktion)
-       
         
  app.MapPost("/api/chat/message", async (HttpContext context, ChatMessage message, NpgsqlDataSource db) =>
 {
@@ -261,6 +235,73 @@ public class Program // Deklarerar huvudklassen Program
                 });
             }
         });
+        
+        app.MapPost("/api/chat/end/{chatToken}", async (string chatToken, NpgsqlDataSource db) =>
+        {
+            try
+            {
+                await using var cmd = db.CreateCommand(@"
+            UPDATE fordon_forms SET is_chat_active = FALSE WHERE chat_token = @chat_token;
+            UPDATE tele_forms SET is_chat_active = FALSE WHERE chat_token = @chat_token;
+            UPDATE forsakrings_forms SET is_chat_active = FALSE WHERE chat_token = @chat_token;
+        ");
+
+                cmd.Parameters.AddWithValue("chat_token", chatToken);
+                var rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+                if (rowsAffected > 0)
+                {
+                    return Results.Ok(new { message = "Chatten avslutades" });
+                }
+
+                return Results.NotFound(new { message = "Chatten hittades inte" });
+            }
+            catch (Exception ex)
+            {
+                return Results.BadRequest(new { message = "Kunde inte avsluta chatten", error = ex.Message });
+            }
+        });
+
+        app.MapPost("/api/chat/rate/{chatToken}", async (string chatToken, HttpContext context, NpgsqlDataSource db) =>
+        {
+            try
+            {
+                // Logga inkommande förfrågan
+                Console.WriteLine($"Mottagen rating-request för chatToken: {chatToken}");
+
+                var requestBody = await context.Request.ReadFromJsonAsync<ChatRatingRequest>();
+        
+                // Logga inkommande data
+                Console.WriteLine($"Betyg: {requestBody?.Rating}, Feedback: {requestBody?.Feedback}");
+
+                if (requestBody == null || requestBody.Rating < 1 || requestBody.Rating > 5)
+                {
+                    return Results.BadRequest(new { message = "Ogiltigt betyg" });
+                }
+
+                await using var cmd = db.CreateCommand(@"
+            INSERT INTO chat_ratings (chat_token, rating, feedback, submitted_at)
+            VALUES (@chat_token, @rating, @feedback, @submitted_at)");
+
+                cmd.Parameters.AddWithValue("chat_token", chatToken);
+                cmd.Parameters.AddWithValue("rating", requestBody.Rating);
+                cmd.Parameters.AddWithValue("feedback", requestBody.Feedback ?? "");
+                cmd.Parameters.AddWithValue("submitted_at", DateTime.UtcNow);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                Console.WriteLine("Betyg sparat i databasen");
+
+                return Results.Ok(new { message = "Betyg sparat" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fel vid betygsändning: {ex.Message}");
+                return Results.BadRequest(new { message = "Kunde inte spara betyget", error = ex.Message });
+            }
+        });
+
+        
 
         app.MapGet("/api/users", async (NpgsqlDataSource db) => // Mappar GET-begäran för att hämta alla användare
         {
