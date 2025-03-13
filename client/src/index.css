@@ -7,7 +7,6 @@
 html, body, #root, #root > div, main {
   height: 100%;
   max-height: 100%;
-  overflow: hidden !important;
   margin: 0;
   padding: 0;
 }
@@ -73,7 +72,7 @@ body {
   padding: 1rem;
   max-width: 1400px;
   margin: 0 auto;
-  height: calc(100vh - 80px); /* Adjust based on your navbar height */
+  height: 100vh;
   overflow: hidden; /* Prevent main container from scrolling */
 }
 
@@ -215,7 +214,17 @@ main {
   flex-direction: column;
   height: 100%;
   overflow-y: auto;
-  padding-top: 3rem; /* Lägg till padding på toppen för att skapa utrymme för headern */
+}
+
+.ticket-items-wrapper {
+  max-height: calc(100vh - 4rem); /* Adjust height as needed */
+  overflow-y: auto;
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.ticket-items-wrapper::-webkit-scrollbar {
+  display: none;  /* Safari and Chrome */
 }
 
 .ticket-tasks-header, .ticket-my-tasks-header, .ticket-done-header {
@@ -244,6 +253,7 @@ main {
   transition: all 0.2s;
   cursor: grab;
   border: 2px solid yellow;
+  width: 97%;
 }
 
 .ticket-tasks .ticket-task-item { border-color: #e74c3c; }
