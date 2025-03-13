@@ -69,22 +69,25 @@ export default function ChatModal({ isOpen, onClose, chatToken }) {
     // Hanterar att skicka betyg och feedback
     const handleSubmitRating = async () => {
         if (!chatToken || rating === null) return;
-
+    
         try {
             const response = await fetch(`/api/chat/rate/${chatToken}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ rating, feedback }),
+                body: JSON.stringify({ 
+                    Rating: rating,  // Capitalize to match backend
+                    Feedback: feedback  // Capitalize to match backend
+                }),
             });
-
+    
             if (!response.ok) {
                 throw new Error("Kunde inte skicka betyg");
             }
-
+    
             console.log("Betyg skickat");
-            onClose(); // 🔹 Stäng chatten efter att betyget skickats
+            onClose(); // Stäng chatten efter att betyget skickats
         } catch (error) {
             console.error("Fel vid betygsändning:", error);
         }
@@ -301,23 +304,37 @@ export default function ChatModal({ isOpen, onClose, chatToken }) {
 
                 {/* 🔹 Om chatten är avslutad, visa betygsformuläret istället */}
                 {showRating ? (
-                    <div className="chat-modal__rating">
-                        <h3>Hur var din chattupplevelse?</h3>
-                        <h3>1-5</h3>
-                        
-                        <textarea
-                            className="chat-modal__rating-feedback"
-                            placeholder="Lämna en kommentar (valfritt)"
-                            value={feedback}
-                            onChange={(e) => setFeedback(e.target.value)}
-                        />
-                        <button 
-                            className="chat-modal__rating-submit"
-                            onClick={handleSubmitRating}
-                        >
-                            Skicka Betyg
-                        </button>
-                    </div>
+                    // Add rating UI in the chat-modal__rating div
+<div className="chat-modal__rating">
+    <h3>Hur var din chattupplevelse?</h3>
+    
+    {/* Rating buttons */}
+    <div className="chat-modal__rating-stars">
+        {[1, 2, 3, 4, 5].map((value) => (
+            <button
+                key={value}
+                className={`chat-modal__rating-star ${rating === value ? 'active' : ''}`}
+                onClick={() => setRating(value)}
+            >
+                {value}
+            </button>
+        ))}
+    </div>
+    
+    <textarea
+        className="chat-modal__rating-feedback"
+        placeholder="Lämna en kommentar (valfritt)"
+        value={feedback}
+        onChange={(e) => setFeedback(e.target.value)}
+    />
+    <button 
+        className="chat-modal__rating-submit"
+        onClick={handleSubmitRating}
+        disabled={rating === null}
+    >
+        Skicka Betyg
+    </button>
+</div>
                 ) : (
                     <>
                         <div className="chat-modal__messages">
