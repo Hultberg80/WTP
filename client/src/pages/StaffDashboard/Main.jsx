@@ -2,58 +2,130 @@
 import { useState, useEffect } from "react";
 import Aside from "./Aside";
 import ChatLink from "../../ChatLink"; // Import the ChatLink component
+import { useAuth } from "../../AuthContext"; // Import useAuth hook
 
 // Definierar huvudkomponenten för applikationen
 function Main() {
+    // Get current user from auth context
+    const { user } = useAuth();
+    
+    // Create user-specific storage keys
+    const getUserTasksKey = () => `tasks_${user?.username || 'guest'}`;
+    const getMyTasksKey = () => `myTasks_${user?.username || 'guest'}`;
+    const getDoneTasksKey = () => `done_${user?.username || 'guest'}`;
+    const getViewedTicketsKey = () => `viewedTickets_${user?.username || 'guest'}`;
+    
     // State för alla ärenden/tasks
     const [tasks, setTasks] = useState(() => {
-        // Try to get tasks from localStorage on initial render
-        const savedTasks = localStorage.getItem('tasks');
+        // Try to get tasks from localStorage on initial render with user-specific key
+        const savedTasks = localStorage.getItem(getUserTasksKey());
         return savedTasks ? JSON.parse(savedTasks) : [];
     });
     
     // State för användarens egna ärenden
     const [myTasks, setMyTasks] = useState(() => {
-        // Try to get myTasks from localStorage on initial render
-        const savedMyTasks = localStorage.getItem('myTasks');
+        // Try to get myTasks from localStorage on initial render with user-specific key
+        const savedMyTasks = localStorage.getItem(getMyTasksKey());
         return savedMyTasks ? JSON.parse(savedMyTasks) : [];
     });
     
     // State för färdiga ärenden
     const [done, setDone] = useState(() => {
-        // Try to get done tasks from localStorage on initial render
-        const savedDone = localStorage.getItem('done');
+        // Try to get done tasks from localStorage on initial render with user-specific key
+        const savedDone = localStorage.getItem(getDoneTasksKey());
         return savedDone ? JSON.parse(savedDone) : [];
     });
     
     // State för att hålla koll på vilka ärenden som har visats/lästs
     const [viewedTickets, setViewedTickets] = useState(() => {
-        const savedViewedTickets = localStorage.getItem('viewedTickets');
+        const savedViewedTickets = localStorage.getItem(getViewedTicketsKey());
         return savedViewedTickets ? JSON.parse(savedViewedTickets) : {};
     });
     
     // State för att hålla koll på vilket ärende som dras
     const [draggedTask, setDraggedTask] = useState(null);
 
+    const [issueTypeFilter, setIssueTypeFilter] = useState('');
+
+    const handleIssueFilterChange = (e) => {
+        setIssueTypeFilter(e.target.value);
+    };
+
+    const getUniqueIssueTypes = () => {
+        const predefinedTypes = [
+            // Fordonsservice ärendetyper
+            "Problem efter reparation",
+            "Garantiärende",
+            "Reklamation",
+            "Kostnadsförfrågan",
+            "Reservdelsfrågor",
+
+            // Telecom/Bredband ärendetyper
+            "Tekniskt problem",
+            "Fakturafrågor",
+            "Ändring av tjänst",
+            "Uppsägning",
+
+            // Försäkringsärenden ärendetyper
+            "Pågående skadeärende",
+            "Frågor om försäkringsskydd",
+            "Ändring av försäkring",
+            "Begäran om försäkringshandlingar"
+        ];
+
+        const allTasksArrays = [tasks, myTasks, done];
+        const uniqueTypes = new Set(predefinedTypes);
+
+        allTasksArrays.forEach(taskArray => {
+            taskArray.forEach(task => {
+                if(task.wtp) {
+                    uniqueTypes.add(task.wtp);
+                }
+            });
+        });
+
+        return Array.from(uniqueTypes);
+    };
+
+    const filteredTasks = issueTypeFilter
+    ? tasks.filter(task => task.wtp === issueTypeFilter)
+    : tasks;
+
+    // Reload tasks from localStorage when user changes
+    useEffect(() => {
+        const savedTasks = localStorage.getItem(getUserTasksKey());
+        const savedMyTasks = localStorage.getItem(getMyTasksKey());
+        const savedDone = localStorage.getItem(getDoneTasksKey());
+        const savedViewedTickets = localStorage.getItem(getViewedTicketsKey());
+        
+        setTasks(savedTasks ? JSON.parse(savedTasks) : []);
+        setMyTasks(savedMyTasks ? JSON.parse(savedMyTasks) : []);
+        setDone(savedDone ? JSON.parse(savedDone) : []);
+        setViewedTickets(savedViewedTickets ? JSON.parse(savedViewedTickets) : {});
+        
+        // Also fetch new tickets when user changes
+        fetchAllTickets();
+    }, [user?.username]); // Re-run when username changes
+
     // Save tasks state to localStorage whenever it changes
     useEffect(() => {
-        localStorage.setItem('tasks', JSON.stringify(tasks));
-    }, [tasks]);
+        localStorage.setItem(getUserTasksKey(), JSON.stringify(tasks));
+    }, [tasks, user?.username]);
 
     // Save myTasks state to localStorage whenever it changes
     useEffect(() => {
-        localStorage.setItem('myTasks', JSON.stringify(myTasks));
-    }, [myTasks]);
+        localStorage.setItem(getMyTasksKey(), JSON.stringify(myTasks));
+    }, [myTasks, user?.username]);
 
     // Save done state to localStorage whenever it changes
     useEffect(() => {
-        localStorage.setItem('done', JSON.stringify(done));
-    }, [done]);
+        localStorage.setItem(getDoneTasksKey(), JSON.stringify(done));
+    }, [done, user?.username]);
     
     // Save viewedTickets state to localStorage whenever it changes
     useEffect(() => {
-        localStorage.setItem('viewedTickets', JSON.stringify(viewedTickets));
-    }, [viewedTickets]);
+        localStorage.setItem(getViewedTicketsKey(), JSON.stringify(viewedTickets));
+    }, [viewedTickets, user?.username]);
 
     useEffect(() => {
         fetchAllTickets();
@@ -164,9 +236,23 @@ function Main() {
 
             <div className="ticket-tasks" onDragOver={handleDragOver} onDrop={() => handleDrop(setTasks, tasks)}>
                 <h2 className="ticket-tasks-header">Ärenden</h2>
+                
+                <div className="issue-filter-container">
+                    <select 
+                        value={issueTypeFilter}
+                        onChange={handleIssueFilterChange}
+                        className="issue-type-filter"
+                    >
+                        <option value="">Alla Ärendetyper</option>
+                        {getUniqueIssueTypes().map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                </div>
+                
                 <div className="ticket-items-wrapper">
                     <div className="ticket-items-container">
-                        {tasks.map((task) => (
+                        {filteredTasks.map((task) => (
                             // Container för varje ärende
                             <div
                                 key={task.id || task.chatToken}
