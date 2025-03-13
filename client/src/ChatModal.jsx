@@ -303,17 +303,8 @@ export default function ChatModal({ isOpen, onClose, chatToken }) {
                 {showRating ? (
                     <div className="chat-modal__rating">
                         <h3>Hur var din chattupplevelse?</h3>
-                        <div className="chat-modal__rating-stars">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <span
-                                    key={star}
-                                    className={`star ${rating >= star ? "selected" : ""}`}
-                                    onClick={() => setRating(star)}
-                                >
-                                    ⭐
-                                </span>
-                            ))}
-                        </div>
+                        <h3>1-5</h3>
+                        
                         <textarea
                             className="chat-modal__rating-feedback"
                             placeholder="Lämna en kommentar (valfritt)"
