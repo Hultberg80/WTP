@@ -7,7 +7,6 @@ import AdminCreateUser from './pages/AdminCreateUser';
 import AdminDashboard from './pages/AdminDashboard';
 import StaffDashboard from './pages/StaffDashboard/Header';
 import StaffLogin from './pages/StaffLogin';
-import Chat from './pages/Chat';
 import Faq from './pages/Faq';
 import UpdateUserInfo from './pages/UpdatePassword';
 import { useChat } from './ChatContext';
@@ -69,7 +68,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
-  );
+  )
 }
 
 export default App;
