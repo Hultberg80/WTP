@@ -17,7 +17,9 @@ const navigate = useNavigate();
 
           <div className="faq-buttons">
             <button onClick={() => navigate("/dynamisk")}>JA</button>
-            <button>Nej</button>
+            <button onClick={() => window.location.href = "https://giphy.com/gifs/3oEjI2JdQPkmLxMcrm"}>
+        Nej
+      </button>
           </div>
 
         <div className="faq-extra-section">
