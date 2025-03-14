@@ -1,40 +1,44 @@
-// Layout.jsx
+// Importerar useState från React för att hantera state
 import { useState } from 'react';
+// Importerar NavLink, Outlet och useNavigate från react-router-dom för routing och navigering
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+// Importerar useAuth-hooken för att hantera autentisering och användarinformation
 import { useAuth } from './AuthContext';
 
 function Layout() {
-  // State for mobile menu
+  // State för att hantera om den mobila menyn är öppen
   const [menuOpen, setMenuOpen] = useState(false);
   
-  // Get auth context and navigation
+  // Hämtar användardata, logout-funktion och inloggningsstatus från AuthContext
   const { user, logout, isLoggedIn } = useAuth();
+  // useNavigate-hooken för att programmatisk navigering
   const navigate = useNavigate();
 
-  // Toggle mobile menu
+  // Funktion för att toggla (öppna/stänga) den mobila menyn
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
   };
   
-  // Handle logout with backend session clearing
+  // Funktion som hanterar utloggning med backend-sessionrensning
   const handleLogout = async () => {
     console.log("Logout initiated");
-    await logout(); // This now calls the backend logout endpoint
+    await logout(); // Anropar logout-funktionen som även rensar sessionen på backend
     console.log("Logout completed, redirecting to login page");
+    // Navigerar till inloggningssidan för staff
     navigate('/staff/login');
   };
 
   return (
     <div>
-      {/* Navigation Header */}
+      {/* Navigationsheader */}
       <nav>
         <div>
           <div>
-            {/* Logo/Brand on the left */}
+            {/* Vänster del: Logo/Brand */}
             <div className="navbar-left">
               <h1 className="project-name">WPT</h1>
               
-              {/* Display company logo if user is logged in and has a company */}
+              {/* Om användaren är inloggad och har ett företag, visa företagets logotyp och namn */}
               {isLoggedIn && user && user.companyLogo && (
                 <div className="company-branding">
                   <img 
@@ -47,24 +51,24 @@ function Layout() {
               )}
               
             </div>
-            {/* Navigation Links in the middle */}
+            {/* Mitten: Navigation länkar */}
             <div className="navbar-center">
-              {/* Your nav links here */}
+              {/* Här kan du lägga till fler navigationslänkar */}
             </div>
 
-            {/* Mobile menu button */}
+            {/* Knapp för mobil meny */}
             <button className="mobile-menu-button" onClick={toggleMenu}>
               {menuOpen ? '✕' : '☰'}
             </button>
 
-            {/* Main Navigation */}
+            {/* Huvudmenyn */}
             <div className={`nav-menu ${menuOpen ? 'active' : ''}`}>
-              {/* Public NavLinks */}
+              {/* Publika navigationslänkar */}
               <div>
                 <NavLink 
                   to={"/dynamisk"}
                   className="hover:text-blue-300 transition-colors"
-                  onClick={() => setMenuOpen(false)}
+                  onClick={() => setMenuOpen(false)} // Stänger menyn vid klick
                 >
                   Dynamiskt Formulär
                 </NavLink>
@@ -77,7 +81,7 @@ function Layout() {
                 </NavLink>
               </div>
 
-              {/* Admin NavLinks - Only shown when user is logged in as admin */}
+              {/* Admin-navigationslänkar - visas endast om användaren är inloggad som admin */}
               {isLoggedIn && user && user.role === 'admin' && (
                 <div>
                   <h2>Admin</h2>
@@ -97,9 +101,8 @@ function Layout() {
                 </div>
               )}
 
-              {/* Staff NavLinks */}
+              {/* Personal (staff) navigationslänkar */}
               <div>
-                <h2>Staff</h2>
                 {isLoggedIn && (
                   <>
                     <NavLink 
@@ -118,18 +121,19 @@ function Layout() {
                   </>
                 )}
               </div>
-
-           
             </div>
             
-            {/* Login/User info on right */}
+            {/* Höger del: Inloggnings-/användarinformation */}
             <div className="navbar-right">
               {isLoggedIn && user ? (
                 <div className="user-menu">
+                  {/* Visar användarens namn */}
                   <span className="user-name">{user.username}</span>
+                  {/* Logout-knapp som anropar handleLogout */}
                   <button onClick={handleLogout} className="logout-button">Logga ut</button>
                 </div>
               ) : (
+                // Om användaren inte är inloggad, visa en länk till inloggningssidan med en ikon
                 <NavLink to="/staff/login">
                   <img src="/img/login.png" alt="Logga in" className="login-img"/>
                 </NavLink>
@@ -139,14 +143,16 @@ function Layout() {
         </div>
       </nav>
 
-      {/* Main Content */}
+      {/* Huvudinnehåll */}
       <main>
+        {/* Outlet renderar de barnkomponenter som matchar den aktuella routen */}
         <Outlet />
       </main>
 
       {/* Footer */}
       <footer>
         <div>
+          {/* Visar aktuellt år och copyright-information */}
           <p>&copy; {new Date().getFullYear()} All rights reversed</p>
         </div>
       </footer>

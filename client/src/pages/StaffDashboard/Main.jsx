@@ -161,7 +161,7 @@ function Main() {
     function fetchAllTickets() {
         console.log("fetching tickets");
         try {
-            fetch("/api/tickets", { credentials: "include" })
+            fetch("/api/tickets", { credentials: "include" }) // credentials: "include" : viktigt för att hålla koll på session-state
                 .then(response => response.json(), printFetchError)
                 .then(data => {
                     // Transform the data
