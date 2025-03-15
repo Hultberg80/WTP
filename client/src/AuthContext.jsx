@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Returnerar AuthContext.Provider som omsluter barn-komponenterna
+  // Returnerar AuthContext.Provider som omsluter children-komponenterna
   // Värdet som skickas med innehåller användardata, inloggningsstatus, laddningstillstånd samt login- och logout-funktioner
   return (
     <AuthContext.Provider value={{ 
